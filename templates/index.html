@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>DeepFake Identifier</title>
+  <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+<body>
+
+  <!-- ── Navigation Bar ── -->
+  <header class="navbar">
+    <div class="nav-brand">
+      <div class="nav-logo">DFI</div>
+      <span class="nav-title">DeepFake Identifier</span>
+    </div>
+    <div class="step-indicator" id="step-indicator">
+      <span class="step-dot active" data-step="1">1</span>
+      <span class="step-line"></span>
+      <span class="step-dot" data-step="2">2</span>
+      <span class="step-line"></span>
+      <span class="step-dot" data-step="3">3</span>
+    </div>
+  </header>
+
+  <main class="main">
+
+    <!-- ════════════════════════════════════════
+         STEP 1 — Welcome
+    ════════════════════════════════════════ -->
+    <section class="step-section active" id="step-1">
+      <div class="hero">
+        <h1 class="hero-title">Detect AI-Generated &amp; Manipulated Images</h1>
+        <p class="hero-sub">
+          Upload any image and our 5-module forensic pipeline will analyze it for
+          deepfake manipulation, AI synthesis, or image splicing — returning a
+          scored, detailed report in seconds.
+        </p>
+      </div>
+
+      <h2 class="section-label">How it works</h2>
+      <div class="module-grid">
+
+        <div class="module-card">
+          <div class="module-icon meta-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <rect x="3" y="3" width="18" height="18" rx="2"/>
+              <line x1="3" y1="9" x2="21" y2="9"/>
+              <line x1="9" y1="21" x2="9" y2="9"/>
+            </svg>
+          </div>
+          <div class="module-weight">10%</div>
+          <h3 class="module-name">Metadata Analysis</h3>
+          <p class="module-desc">Inspects EXIF data, AI software signatures, PNG generation parameters, and quantization tables.</p>
+        </div>
+
+        <div class="module-card">
+          <div class="module-icon pixel-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <circle cx="12" cy="12" r="3"/>
+              <path d="M12 2v2M12 20v2M2 12h2M20 12h2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"/>
+            </svg>
+          </div>
+          <div class="module-weight">20%</div>
+          <h3 class="module-name">Pixel &amp; Artifact Analysis</h3>
+          <p class="module-desc">Detects compression artifacts, noise uniformity anomalies, edge kurtosis, and color channel irregularities.</p>
+        </div>
+
+        <div class="module-card highlight-card">
+          <div class="module-icon ai-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <path d="M12 2a4 4 0 0 1 4 4v1h1a3 3 0 0 1 0 6h-1v1a4 4 0 0 1-8 0v-1H7a3 3 0 0 1 0-6h1V6a4 4 0 0 1 4-4z"/>
+              <circle cx="9" cy="10" r="1" fill="currentColor"/>
+              <circle cx="15" cy="10" r="1" fill="currentColor"/>
+            </svg>
+          </div>
+          <div class="module-weight accent-weight">35%</div>
+          <h3 class="module-name">AI Vision Analysis</h3>
+          <p class="module-desc">Claude Vision inspects face boundaries, lighting consistency, skin texture, eye/teeth anomalies, and background coherence.</p>
+          <span class="module-badge">Highest Weight</span>
+        </div>
+
+        <div class="module-card">
+          <div class="module-icon freq-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+            </svg>
+          </div>
+          <div class="module-weight">20%</div>
+          <h3 class="module-name">Frequency Domain Analysis</h3>
+          <p class="module-desc">FFT-based detection of GAN checkerboard artifacts, power spectrum deviations, and directional frequency bias.</p>
+        </div>
+
+        <div class="module-card">
+          <div class="module-icon stat-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+              <line x1="18" y1="20" x2="18" y2="10"/>
+              <line x1="12" y1="20" x2="12" y2="4"/>
+              <line x1="6" y1="20" x2="6" y2="14"/>
+            </svg>
+          </div>
+          <div class="module-weight">15%</div>
+          <h3 class="module-name">Statistical / ELA Analysis</h3>
+          <p class="module-desc">Error Level Analysis detects re-saved regions. Copy-move detection and Benford's Law test DCT coefficients.</p>
+        </div>
+
+      </div>
+
+      <div class="score-legend">
+        <h2 class="section-label">Score Interpretation</h2>
+        <div class="legend-grid">
+          <div class="legend-item">
+            <span class="legend-dot green"></span>
+            <span class="legend-range">0 – 25</span>
+            <span class="legend-label">Likely Authentic</span>
+          </div>
+          <div class="legend-item">
+            <span class="legend-dot yellow"></span>
+            <span class="legend-range">26 – 50</span>
+            <span class="legend-label">Suspicious</span>
+          </div>
+          <div class="legend-item">
+            <span class="legend-dot orange"></span>
+            <span class="legend-range">51 – 75</span>
+            <span class="legend-label">Probable Deepfake</span>
+          </div>
+          <div class="legend-item">
+            <span class="legend-dot red"></span>
+            <span class="legend-range">76 – 100</span>
+            <span class="legend-label">High Confidence Deepfake</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="cta-row">
+        <button class="btn-primary" onclick="goToStep(2)">
+          Start Analysis
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18">
+            <line x1="5" y1="12" x2="19" y2="12"/>
+            <polyline points="12 5 19 12 12 19"/>
+          </svg>
+        </button>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════
+         STEP 2 — Upload
+    ════════════════════════════════════════ -->
+    <section class="step-section" id="step-2">
+      <div class="step-header">
+        <h1 class="step-title">Upload Your Image</h1>
+        <p class="step-sub">Drag and drop an image below, or click to browse your files.</p>
+      </div>
+
+      <div class="upload-area">
+        <div id="drop-zone" class="drop-zone" role="button" tabindex="0"
+             aria-label="Image drop zone — drag and drop or click to browse">
+          <div id="dz-idle" class="dz-state">
+            <svg class="upload-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="64" height="64">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/>
+              <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+            <p class="dz-primary">Drag &amp; drop your image here</p>
+            <p class="dz-or">— or —</p>
+            <button class="btn-browse" id="browse-btn" type="button">Browse Files</button>
+            <p class="dz-hint">Supported: JPG, PNG, WebP, BMP, TIFF &nbsp;·&nbsp; Max 20 MB</p>
+          </div>
+          <div id="dz-dragging" class="dz-state hidden">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="64" height="64">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/>
+              <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+            <p class="dz-primary">Release to upload</p>
+          </div>
+          <input type="file" id="file-input" accept="image/*" class="hidden" />
+        </div>
+
+        <!-- Preview panel (shown after file selection) -->
+        <div id="preview-panel" class="preview-panel hidden">
+          <img id="preview-img" src="" alt="Selected image preview" class="preview-img" />
+          <div class="preview-meta">
+            <p class="preview-filename" id="preview-filename"></p>
+            <p class="preview-details" id="preview-details"></p>
+          </div>
+          <button class="btn-clear" id="clear-btn" type="button" title="Remove image">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="18" height="18">
+              <line x1="18" y1="6" x2="6" y2="18"/>
+              <line x1="6" y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- Client-side validation error -->
+      <div id="upload-error" class="upload-error hidden">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="20" height="20">
+          <circle cx="12" cy="12" r="10"/>
+          <line x1="12" y1="8" x2="12" y2="12"/>
+          <line x1="12" y1="16" x2="12.01" y2="16"/>
+        </svg>
+        <span id="upload-error-msg"></span>
+      </div>
+
+      <div class="step-nav">
+        <button class="btn-ghost" onclick="goToStep(1)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18">
+            <line x1="19" y1="12" x2="5" y2="12"/>
+            <polyline points="12 19 5 12 12 5"/>
+          </svg>
+          Back
+        </button>
+        <button class="btn-primary" id="analyze-btn" disabled onclick="analyzeImage()">
+          Analyze Image
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18">
+            <circle cx="11" cy="11" r="8"/>
+            <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+          </svg>
+        </button>
+      </div>
+    </section>
+
+    <!-- ════════════════════════════════════════
+         STEP 3 — Results Dashboard
+    ════════════════════════════════════════ -->
+    <section class="step-section" id="step-3">
+
+      <!-- Loading state -->
+      <div id="state-loading" class="result-state">
+        <div class="loader-wrap">
+          <div class="spinner"></div>
+          <p class="loader-title">Analyzing image…</p>
+          <p class="loader-sub">Running all 5 detection modules</p>
+          <div class="loader-modules">
+            <div class="lm-item" id="lm-metadata">📋 Metadata</div>
+            <div class="lm-item" id="lm-artifact">🔬 Pixel &amp; Artifact</div>
+            <div class="lm-item" id="lm-ai">🤖 AI Vision</div>
+            <div class="lm-item" id="lm-freq">📊 Frequency</div>
+            <div class="lm-item" id="lm-stat">📈 Statistics</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Error state -->
+      <div id="state-error" class="result-state hidden">
+        <div class="error-wrap">
+          <div class="error-icon">!</div>
+          <p class="error-title">Analysis Failed</p>
+          <p class="error-msg" id="error-msg-text"></p>
+          <button class="btn-ghost" onclick="goToStep(2)">Try Again</button>
+        </div>
+      </div>
+
+      <!-- Success state -->
+      <div id="state-success" class="result-state hidden">
+
+        <!-- Top summary row -->
+        <div class="result-summary">
+
+          <!-- Left: image thumbnail -->
+          <div class="result-image-wrap">
+            <img id="result-img" src="" alt="Analyzed image" class="result-img" />
+            <p class="result-img-label" id="result-img-label"></p>
+          </div>
+
+          <!-- Centre: score gauge -->
+          <div class="gauge-wrap">
+            <svg class="gauge-svg" viewBox="0 0 200 200">
+              <!-- Background track -->
+              <circle class="gauge-track" cx="100" cy="100" r="80"
+                fill="none" stroke-width="16" stroke-linecap="round"/>
+              <!-- Coloured arc -->
+              <circle class="gauge-arc" id="gauge-arc" cx="100" cy="100" r="80"
+                fill="none" stroke-width="16" stroke-linecap="round"
+                transform="rotate(-90 100 100)"
+                stroke-dasharray="502.65"
+                stroke-dashoffset="502.65"/>
+              <!-- Score number -->
+              <text class="gauge-number" id="gauge-number" x="100" y="95" text-anchor="middle" dominant-baseline="middle">0</text>
+              <text class="gauge-label-text" x="100" y="122" text-anchor="middle">/ 100</text>
+            </svg>
+          </div>
+
+          <!-- Right: verdict info -->
+          <div class="verdict-info">
+            <div class="verdict-badge" id="verdict-badge">—</div>
+            <div class="verdict-type-row">
+              <span class="verdict-type-label">Type:</span>
+              <span class="verdict-type" id="verdict-type">—</span>
+            </div>
+            <div class="verdict-conf-row">
+              <span class="verdict-conf-label">Confidence:</span>
+              <span class="verdict-conf" id="verdict-conf">—</span>
+            </div>
+            <p class="verdict-desc" id="verdict-desc"></p>
+            <p class="verdict-type-exp" id="verdict-type-exp"></p>
+          </div>
+        </div>
+
+        <!-- Module Breakdown -->
+        <div class="result-card">
+          <h2 class="card-heading">Module Breakdown</h2>
+          <div class="module-breakdown" id="module-breakdown">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+        <!-- Key Findings -->
+        <div class="result-card">
+          <div class="findings-header">
+            <h2 class="card-heading">Key Findings</h2>
+            <button class="btn-toggle" id="findings-toggle" onclick="toggleFindings()">Show all</button>
+          </div>
+          <ul class="findings-list" id="findings-list">
+            <!-- Populated by JS -->
+          </ul>
+        </div>
+
+        <!-- Image Info -->
+        <div class="result-card image-info-card">
+          <h2 class="card-heading">Image Information</h2>
+          <div class="info-grid" id="info-grid">
+            <!-- Populated by JS -->
+          </div>
+        </div>
+
+        <!-- Reset -->
+        <div class="step-nav center-nav">
+          <button class="btn-ghost" onclick="resetAll()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="18" height="18">
+              <line x1="19" y1="12" x2="5" y2="12"/>
+              <polyline points="12 19 5 12 12 5"/>
+            </svg>
+            Analyze Another Image
+          </button>
+        </div>
+
+      </div><!-- /state-success -->
+    </section>
+
+  </main>
+
+  <footer class="footer">
+    <p>DeepFake Identifier &nbsp;·&nbsp; 5-Module Detection Pipeline &nbsp;·&nbsp; Powered by Claude Vision + Forensic Analysis</p>
+  </footer>
+
+  <script src="/static/js/app.js"></script>
+</body>
+</html>
