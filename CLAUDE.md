@@ -56,6 +56,9 @@ The server auto-detects `.env.txt` or `.env` — no renaming needed.
 
 ### Server-side (Claude AI Vision)
 - Claude claude-opus-4-6 analyzes: skin texture, lighting, face symmetry, background artifacts, generation method
+- **Cost-saving rule**: Claude AI is **skipped** if the local composite score is **≥ 65%** — the verdict is already clear from the 10 algorithms, no API call needed
+- A **"Run AI Analysis anyway"** button is shown so the user can still trigger it manually if desired
+- Threshold constant: `AI_SKIP_THRESHOLD = 65` in `index.html`
 
 ### Verdict Thresholds
 - **< 26%** → LIKELY REAL
