@@ -66,12 +66,23 @@ The server auto-detects `.env.txt` or `.env` — no renaming needed.
 - **≥ 50%** → LIKELY DEEPFAKE
 
 ## Design System
-- **Style**: Apple-inspired — clean, minimal, white backgrounds
+- **Style**: Apple simplicity — monochromatic, editorial, zero colour accents
 - **Font**: `-apple-system, BlinkMacSystemFont, SF Pro, Helvetica Neue, system-ui`
-- **Accent**: `#0071e3` (Apple blue)
-- **Background**: `#ffffff` / `#f5f5f7`
-- **Text**: `#1d1d1f` primary, `#6e6e73` secondary
-- **Cards**: white + subtle shadow + 18px radius
+- **Palette**: strictly black / white / grey only
+  - `--ink: #111111` primary text + CTAs
+  - `--muted: #757575` secondary text
+  - `--subtle: #aaaaaa` labels, eyebrows
+  - `--border: #dedede` card borders
+  - `--surface: #f7f7f7` backgrounds
+- **Cards**: white + `1px` border + `12px` radius (no box-shadow)
+- **Verdict colours** (greyscale only):
+  - LIKELY REAL → `#f7f7f7` bg, ink text
+  - SUSPICIOUS → `#e4e4e4` bg, dark text
+  - LIKELY DEEPFAKE → `#111111` bg, white text (inverted)
+- **Score bars**: `#cccccc` low · `#888888` mid · `#111111` high
+- **Methods section**: compact numbered 2-column list (not emoji cards)
+- **Results hero**: large `5.5rem` score number leads the verdict
+- **UX compliance**: skip link, `aria-*` on all interactive elements, `prefers-reduced-motion`, keyboard-accessible drop zone, `tabular-nums` on scores
 
 ## API Endpoint
 **POST /api/analyze**

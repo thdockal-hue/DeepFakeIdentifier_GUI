@@ -3,46 +3,80 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="color-scheme" content="light">
 <title>Deepfake Identifier — Forensic Image Analysis</title>
 <style>
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
+/* ── Design tokens: strictly black / white / grey ── */
 :root {
-  --white:   #ffffff;
-  --bg:      #f5f5f7;
-  --card:    #ffffff;
-  --blue:    #0071e3;
-  --blue-h:  #0077ed;
-  --text:    #1d1d1f;
-  --sub:     #6e6e73;
-  --border:  #d2d2d7;
-  --green:   #34c759;
-  --yellow:  #ff9f0a;
-  --red:     #ff3b30;
-  --shadow:  0 2px 20px rgba(0,0,0,.08);
-  --shadow-lg: 0 8px 40px rgba(0,0,0,.12);
-  --radius:  18px;
-  --radius-sm: 10px;
+  --black:    #000000;
+  --ink:      #111111;
+  --dark:     #222222;
+  --body-clr: #3d3d3d;
+  --muted:    #757575;
+  --subtle:   #aaaaaa;
+  --border:   #dedede;
+  --divider:  #f0f0f0;
+  --surface:  #f7f7f7;
+  --white:    #ffffff;
+
+  /* Semantic aliases kept so JS-rendered HTML works unchanged */
+  --text:   var(--ink);
+  --sub:    var(--muted);
+  --bg:     var(--surface);
+  --card:   var(--white);
+  --blue:   var(--ink);   /* override: no colour accent */
+  --blue-h: var(--dark);
+
+  /* Verdict semantics → greyscale */
+  --green:  #888888;
+  --yellow: #555555;
+  --red:    var(--ink);
+
+  --shadow:    0 0 0 1px rgba(0,0,0,.06), 0 2px 8px rgba(0,0,0,.05);
+  --shadow-lg: 0 0 0 1px rgba(0,0,0,.07), 0 8px 24px rgba(0,0,0,.09);
+  --radius:    12px;
+  --radius-sm: 8px;
 }
 
 html, body {
   height: 100%;
   font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Display', 'SF Pro Text', 'Helvetica Neue', system-ui, sans-serif;
-  background: var(--bg);
-  color: var(--text);
-  line-height: 1.6;
+  background: var(--white);
+  color: var(--ink);
+  line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+  color-scheme: light;
 }
 
-/* ── Screens ── */
-.screen { display: none; min-height: 100vh; padding: 0 0 80px; opacity: 0; transition: opacity .3s ease; }
-.screen.active { display: block; opacity: 1; }
+/* ── Skip link ── */
+.skip-link {
+  position: absolute; top: -40px; left: 16px; z-index: 9999;
+  background: var(--ink); color: var(--white);
+  padding: 8px 16px; border-radius: 4px; font-size: .875rem;
+  text-decoration: none; font-weight: 600;
+  transition: top .15s;
+}
+.skip-link:focus { top: 8px; }
 
-.container { max-width: 880px; margin: 0 auto; padding: 0 20px; }
+/* ── Screens ── */
+.screen { display: none; min-height: 100vh; padding: 0 0 80px; }
+.screen.active { display: block; }
+.screen.fade-in { animation: fadeIn .22s ease forwards; }
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .screen.fade-in { animation: none; }
+  *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; }
+}
+
+.container { max-width: 800px; margin: 0 auto; padding: 0 24px; }
 
 /* ── Nav ── */
 .nav {
-  background: rgba(255,255,255,.85);
+  background: rgba(255,255,255,.92);
   backdrop-filter: saturate(180%) blur(20px);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
   border-bottom: 1px solid var(--border);
@@ -52,296 +86,317 @@ html, body {
   display: flex; align-items: center; justify-content: space-between;
 }
 .nav-brand {
-  font-size: 1.05rem; font-weight: 600; color: var(--text); letter-spacing: -0.3px;
-  display: flex; align-items: center; gap: 8px;
+  font-size: .9rem; font-weight: 700; color: var(--ink);
+  letter-spacing: -0.2px; display: flex; align-items: center; gap: 7px;
 }
-.nav-brand svg { color: var(--blue); }
-.nav-steps { display: flex; gap: 6px; }
+.nav-brand svg { color: var(--ink); }
+.nav-steps { display: flex; gap: 8px; align-items: center; }
 .nav-step {
-  width: 8px; height: 8px; border-radius: 50%;
+  width: 6px; height: 6px; border-radius: 50%;
   background: var(--border); cursor: pointer;
-  transition: background .2s, transform .2s;
+  transition: background .18s, transform .18s;
+  border: none; padding: 0;
 }
-.nav-step.active { background: var(--blue); transform: scale(1.3); }
+.nav-step.active { background: var(--ink); transform: scale(1.5); }
+.nav-step:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
 
 /* ── Hero ── */
-.hero {
-  text-align: center;
-  padding: 72px 20px 48px;
-}
-.hero-badge {
-  display: inline-block;
-  background: rgba(0,113,227,.08);
-  color: var(--blue);
-  font-size: .78rem; font-weight: 600;
-  letter-spacing: .5px; text-transform: uppercase;
-  padding: 5px 14px; border-radius: 50px;
-  margin-bottom: 20px;
+.hero { padding: 72px 24px 52px; max-width: 800px; margin: 0 auto; }
+.hero-eyebrow {
+  font-size: .72rem; font-weight: 600; letter-spacing: 1.2px;
+  text-transform: uppercase; color: var(--subtle); margin-bottom: 18px;
 }
 .hero h1 {
-  font-size: clamp(2rem, 6vw, 3.2rem);
-  font-weight: 700; letter-spacing: -1px; line-height: 1.1;
-  margin-bottom: 16px;
+  font-size: clamp(2.2rem, 6vw, 3.6rem);
+  font-weight: 800; letter-spacing: -1.5px; line-height: 1.06;
+  margin-bottom: 18px; color: var(--ink);
+  text-wrap: balance;
 }
-.hero h1 span { color: var(--blue); }
 .hero p {
-  font-size: 1.1rem; color: var(--sub); max-width: 540px; margin: 0 auto 36px;
+  font-size: 1rem; color: var(--muted); max-width: 440px;
+  margin: 0 0 32px; line-height: 1.7;
 }
-.hero-cta { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+.hero-cta { display: flex; gap: 10px; flex-wrap: wrap; }
 
 /* ── Buttons ── */
 .btn {
-  display: inline-flex; align-items: center; gap: 8px;
-  padding: 12px 28px; border: none; border-radius: 980px;
-  font-size: 1rem; font-weight: 600; cursor: pointer;
-  transition: filter .2s, transform .15s, opacity .2s;
-  text-decoration: none;
+  display: inline-flex; align-items: center; gap: 7px;
+  padding: 11px 22px; border: none; border-radius: 8px;
+  font-size: .9rem; font-weight: 600; cursor: pointer;
+  text-decoration: none; letter-spacing: -0.1px;
+  touch-action: manipulation;
+  transition: opacity .12s, transform .1s;
 }
-.btn:hover { filter: brightness(1.08); transform: translateY(-1px); }
-.btn:active { transform: translateY(0); }
-.btn:disabled { opacity: .45; cursor: not-allowed; transform: none; filter: none; }
-.btn-primary  { background: var(--blue);    color: #fff; }
-.btn-secondary{ background: var(--white);   color: var(--blue); border: 1.5px solid var(--blue); }
-.btn-ghost    { background: transparent;    color: var(--sub);  border: 1.5px solid var(--border); }
-.btn-sm       { padding: 8px 20px; font-size: .9rem; }
-
-/* ── Cards ── */
-.card {
-  background: var(--card);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  padding: 24px 28px;
-  margin-bottom: 16px;
-}
-.card-title { font-size: 1rem; font-weight: 600; color: var(--text); margin-bottom: 8px; }
-.card-sub   { font-size: .9rem; color: var(--sub); }
+.btn:hover { opacity: .82; transform: translateY(-1px); }
+.btn:active { transform: translateY(0); opacity: 1; }
+.btn:disabled { opacity: .3; cursor: not-allowed; transform: none; }
+.btn:focus-visible { outline: 2px solid var(--ink); outline-offset: 3px; }
+.btn-primary   { background: var(--ink); color: var(--white); }
+.btn-secondary { background: var(--white); color: var(--ink); border: 1.5px solid var(--ink); }
+.btn-ghost     { background: var(--surface); color: var(--body-clr); border: 1px solid var(--border); }
+.btn-sm        { padding: 7px 15px; font-size: .84rem; border-radius: 6px; }
 
 /* ── Section headers ── */
 .section-label {
-  font-size: .75rem; font-weight: 600; letter-spacing: .8px;
-  text-transform: uppercase; color: var(--sub);
-  margin: 32px 0 12px;
+  font-size: .69rem; font-weight: 700; letter-spacing: 1px;
+  text-transform: uppercase; color: var(--subtle);
+  margin: 36px 0 12px;
+  display: flex; align-items: center; gap: 10px;
+}
+.section-label::after {
+  content: ''; flex: 1; height: 1px; background: var(--divider);
 }
 
-/* ── Method grid ── */
-.method-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
-  gap: 12px; margin-bottom: 12px;
+/* ── Cards ── */
+.card {
+  background: var(--white);
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  padding: 20px 24px;
+  margin-bottom: 10px;
 }
-.method-card {
-  background: var(--card);
-  border-radius: var(--radius-sm);
-  box-shadow: var(--shadow);
-  padding: 18px 20px;
+.card-title { font-size: .92rem; font-weight: 600; color: var(--ink); margin-bottom: 6px; }
+.card-sub   { font-size: .875rem; color: var(--muted); line-height: 1.65; }
+
+/* ── Methods list — compact 2-col numbered ── */
+.methods-list {
+  border: 1px solid var(--border); border-radius: var(--radius);
+  overflow: hidden; margin-bottom: 10px;
+  display: grid; grid-template-columns: 1fr 1fr;
 }
-.method-icon { font-size: 1.4rem; margin-bottom: 8px; }
-.method-card h4 { font-size: .9rem; font-weight: 600; margin-bottom: 4px; }
-.method-card p  { font-size: .82rem; color: var(--sub); line-height: 1.5; }
+.method-row {
+  display: flex; gap: 12px; align-items: flex-start;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--divider);
+  border-right: 1px solid var(--divider);
+}
+.method-row:nth-child(even)      { border-right: none; }
+.method-row:nth-last-child(-n+2) { border-bottom: none; }
+.method-num {
+  font-size: .69rem; font-weight: 700; color: var(--subtle);
+  letter-spacing: .5px; margin-top: 1px; flex-shrink: 0; min-width: 18px;
+  font-variant-numeric: tabular-nums;
+}
+.method-name { font-size: .875rem; font-weight: 600; color: var(--ink); margin-bottom: 2px; }
+.method-desc { font-size: .78rem; color: var(--muted); line-height: 1.5; }
 
 /* ── Disclaimer ── */
 .disclaimer {
-  background: rgba(255,159,10,.08);
-  border: 1px solid rgba(255,159,10,.3);
+  background: var(--surface);
+  border: 1px solid var(--border);
   border-radius: var(--radius-sm);
-  padding: 14px 18px;
-  font-size: .875rem; color: #7d4e00;
-  margin: 20px 0;
+  padding: 12px 16px;
+  font-size: .82rem; color: var(--muted); line-height: 1.6;
+  margin: 14px 0;
 }
 
 /* ── Drop zone ── */
 #drop-zone {
-  border: 2px dashed var(--border);
+  border: 1.5px dashed var(--border);
   border-radius: var(--radius);
-  padding: 60px 24px;
+  padding: 56px 24px;
   text-align: center; cursor: pointer;
-  transition: border-color .2s, background .2s;
-  background: var(--card);
-  box-shadow: var(--shadow);
-  margin-bottom: 20px;
+  transition: border-color .15s, background .15s;
+  background: var(--white);
+  margin-bottom: 18px;
 }
-#drop-zone:hover, #drop-zone.dragover {
-  border-color: var(--blue);
-  background: rgba(0,113,227,.03);
+#drop-zone:hover, #drop-zone.dragover, #drop-zone:focus-visible {
+  border-color: var(--ink);
+  background: var(--surface);
+  outline: none;
 }
-.dz-icon { font-size: 3.5rem; margin-bottom: 16px; opacity: .5; }
-#drop-zone p { color: var(--sub); font-size: .95rem; }
-#drop-zone p strong { color: var(--blue); }
-#file-input { display: none; }
+.dz-icon {
+  width: 44px; height: 44px; margin: 0 auto 14px;
+  border: 1px solid var(--border); border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
+  color: var(--subtle);
+}
+#drop-zone p { color: var(--muted); font-size: .9rem; }
+#drop-zone p strong { color: var(--ink); font-weight: 600; }
 
 /* ── Preview ── */
-#preview-wrap {
-  display: none; text-align: center; margin-bottom: 20px;
+#preview-wrap { display: none; text-align: center; margin-bottom: 18px; }
+#preview-img  {
+  max-width: 100%; max-height: 300px;
+  border-radius: var(--radius); border: 1px solid var(--border);
 }
-#preview-img {
-  max-width: 100%; max-height: 340px;
-  border-radius: var(--radius); box-shadow: var(--shadow-lg);
-}
-#preview-info {
-  margin-top: 10px; color: var(--sub); font-size: .875rem;
-}
+#preview-info { margin-top: 8px; color: var(--muted); font-size: .8rem; }
 
 /* ── Progress ── */
-#progress-wrap { display: none; margin-bottom: 20px; }
-#progress-label { font-size: .875rem; color: var(--sub); margin-bottom: 8px; }
+#progress-wrap { display: none; margin-bottom: 18px; }
+#progress-label { font-size: .8rem; color: var(--muted); margin-bottom: 8px; }
 .progress-bg {
-  background: var(--border); border-radius: 50px;
-  height: 6px; overflow: hidden;
+  background: var(--divider); border-radius: 50px; height: 3px; overflow: hidden;
 }
 #progress-fill {
-  height: 100%; width: 0%;
-  background: var(--blue);
-  border-radius: 50px;
-  transition: width .4s ease;
+  height: 100%; width: 0%; background: var(--ink); border-radius: 50px;
+  transition: width .3s ease;
 }
 
 /* ── Upload actions ── */
-#upload-actions { display: flex; gap: 12px; flex-wrap: wrap; }
+#upload-actions { display: flex; gap: 10px; flex-wrap: wrap; }
 
-/* ── Results — Verdict ── */
-#verdict-hero {
-  text-align: center; padding: 36px 20px 28px;
+/* ── Verdict hero ── */
+#verdict-hero { padding: 44px 24px 28px; max-width: 800px; margin: 0 auto; }
+.verdict-eyebrow {
+  font-size: .69rem; font-weight: 700; letter-spacing: 1px;
+  text-transform: uppercase; color: var(--subtle); margin-bottom: 10px;
+}
+.verdict-score-num {
+  font-size: clamp(3.5rem, 10vw, 5.5rem);
+  font-weight: 800; letter-spacing: -3px; line-height: 1;
+  color: var(--ink); margin-bottom: 10px;
+  font-variant-numeric: tabular-nums;
 }
 #verdict-badge {
   display: inline-block;
-  padding: 10px 32px; border-radius: 50px;
-  font-size: 1.1rem; font-weight: 700;
-  letter-spacing: .4px; margin-bottom: 12px;
+  padding: 6px 18px; border-radius: 6px;
+  font-size: .88rem; font-weight: 700; letter-spacing: .1px;
+  margin-bottom: 8px;
 }
-.v-real    { background: rgba(52,199,89,.12);  color: #1a7f37; border: 2px solid var(--green);  }
-.v-suspect { background: rgba(255,159,10,.12); color: #7d4e00; border: 2px solid var(--yellow); }
-.v-fake    { background: rgba(255,59,48,.12);  color: #c0392b; border: 2px solid var(--red);    }
+/* Verdict: greyscale only */
+.v-real    { background: var(--surface); color: var(--ink); border: 1.5px solid var(--border); }
+.v-suspect { background: #e4e4e4; color: var(--dark); border: 1.5px solid #c0c0c0; }
+.v-fake    { background: var(--ink); color: var(--white); border: 1.5px solid var(--ink); }
 
-#verdict-sub { color: var(--sub); font-size: .95rem; }
+#verdict-sub { color: var(--muted); font-size: .84rem; }
 
 /* ── Confidence bar ── */
 .conf-row { margin-bottom: 28px; }
 .conf-labels {
   display: flex; justify-content: space-between;
-  font-size: .82rem; color: var(--sub); margin-bottom: 6px;
+  font-size: .76rem; color: var(--muted); margin-bottom: 8px; font-weight: 500;
 }
-.conf-bg { background: var(--border); border-radius: 50px; height: 10px; overflow: hidden; }
-#conf-fill { height: 100%; border-radius: 50px; transition: width .7s ease; }
+.conf-bg { background: var(--divider); border-radius: 50px; height: 4px; overflow: hidden; }
+#conf-fill { height: 100%; border-radius: 50px; transition: width .65s ease; background: var(--ink); }
 .conf-endpoints {
   display: flex; justify-content: space-between;
-  font-size: .75rem; color: var(--border); margin-top: 4px;
+  font-size: .69rem; color: var(--subtle); margin-top: 6px;
 }
 
 /* ── Score grid ── */
 .score-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-  gap: 12px; margin-bottom: 24px;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 8px; margin-bottom: 24px;
 }
 .score-card {
-  background: var(--card); border-radius: var(--radius-sm);
-  box-shadow: var(--shadow); padding: 16px 18px;
+  background: var(--white); border-radius: var(--radius-sm);
+  border: 1px solid var(--border); padding: 14px 16px;
 }
 .score-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
-.score-card h4 { font-size: .88rem; font-weight: 600; }
+.score-card h4 { font-size: .8rem; font-weight: 600; color: var(--ink); }
 .score-pill {
-  font-size: .78rem; font-weight: 700;
-  padding: 2px 10px; border-radius: 50px;
+  font-size: .69rem; font-weight: 700;
+  padding: 2px 7px; border-radius: 4px;
+  font-variant-numeric: tabular-nums;
 }
-.pill-low  { background: rgba(52,199,89,.12);  color: #1a7f37; }
-.pill-mid  { background: rgba(255,159,10,.12); color: #7d4e00; }
-.pill-high { background: rgba(255,59,48,.12);  color: #c0392b; }
-.score-bar-bg { background: var(--border); border-radius: 50px; height: 5px; overflow: hidden; margin-bottom: 6px; }
+.pill-low  { background: var(--surface); color: var(--muted); }
+.pill-mid  { background: #e0e0e0; color: var(--dark); }
+.pill-high { background: var(--ink); color: var(--white); }
+.score-bar-bg { background: var(--divider); border-radius: 50px; height: 3px; overflow: hidden; margin-bottom: 6px; }
 .score-bar-fill { height: 100%; border-radius: 50px; }
-.score-finding { font-size: .8rem; color: var(--sub); line-height: 1.4; }
+.score-finding { font-size: .73rem; color: var(--subtle); }
 
 /* ── AI Analysis card ── */
 .ai-card {
-  background: var(--card);
+  background: var(--white);
   border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  padding: 24px 28px;
-  margin-bottom: 16px;
-  border-left: 4px solid var(--blue);
+  border: 1px solid var(--border);
+  padding: 20px 24px; margin-bottom: 10px;
+  border-top: 2px solid var(--ink);
 }
-.ai-card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 16px; }
-.ai-card-header h3 { font-size: 1rem; font-weight: 600; }
+.ai-card-header { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; }
+.ai-card-header h3 { font-size: .92rem; font-weight: 600; color: var(--ink); }
 .ai-badge {
-  background: rgba(0,113,227,.1); color: var(--blue);
-  font-size: .72rem; font-weight: 700; letter-spacing: .4px;
-  text-transform: uppercase; padding: 3px 10px; border-radius: 50px;
+  background: var(--surface); color: var(--muted);
+  font-size: .65rem; font-weight: 700; letter-spacing: .6px;
+  text-transform: uppercase; padding: 3px 8px;
+  border-radius: 4px; border: 1px solid var(--border);
 }
-.ai-loading { display: flex; align-items: center; gap: 10px; color: var(--sub); font-size: .9rem; }
+.ai-loading { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: .875rem; }
 .spinner {
-  width: 18px; height: 18px; border: 2.5px solid var(--border);
-  border-top-color: var(--blue); border-radius: 50%;
-  animation: spin .8s linear infinite; flex-shrink: 0;
+  width: 15px; height: 15px; border: 2px solid var(--border);
+  border-top-color: var(--ink); border-radius: 50%;
+  animation: spin .7s linear infinite; flex-shrink: 0;
 }
 @keyframes spin { to { transform: rotate(360deg); } }
 
-.ai-verdict-row { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; flex-wrap: wrap; }
-.ai-verdict-label { font-size: 1rem; font-weight: 700; }
+.ai-verdict-row { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+.ai-verdict-label { font-size: .92rem; font-weight: 700; }
 .ai-conf-tag {
-  font-size: .8rem; font-weight: 600; padding: 3px 12px;
-  border-radius: 50px; background: var(--bg);
+  font-size: .76rem; font-weight: 600; padding: 3px 10px;
+  border-radius: 4px; background: var(--surface); color: var(--muted);
+  border: 1px solid var(--border);
 }
-.ai-summary { font-size: .9rem; color: var(--sub); margin-bottom: 14px; line-height: 1.6; }
-.ai-evidence h4 { font-size: .85rem; font-weight: 600; margin-bottom: 8px; }
+.ai-summary { font-size: .875rem; color: var(--muted); margin-bottom: 14px; line-height: 1.7; }
+.ai-evidence h4 {
+  font-size: .69rem; font-weight: 700; letter-spacing: .8px;
+  text-transform: uppercase; color: var(--subtle); margin-bottom: 8px;
+}
 .ai-evidence ul { list-style: none; padding: 0; }
 .ai-evidence li {
-  padding: 7px 12px; margin-bottom: 6px;
-  background: var(--bg); border-radius: var(--radius-sm);
-  font-size: .85rem; color: var(--sub);
-  border-left: 3px solid var(--blue);
+  padding: 7px 12px; margin-bottom: 4px;
+  background: var(--surface); border-radius: var(--radius-sm);
+  font-size: .82rem; color: var(--muted);
+  border-left: 2px solid var(--border);
 }
 .ai-grid {
-  display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 10px; margin-bottom: 14px;
+  display: grid; grid-template-columns: repeat(auto-fill, minmax(145px, 1fr));
+  gap: 8px; margin-bottom: 14px;
 }
 .ai-stat {
-  background: var(--bg); border-radius: var(--radius-sm);
-  padding: 10px 14px;
+  background: var(--surface); border-radius: var(--radius-sm);
+  padding: 10px 12px; border: 1px solid var(--divider);
 }
-.ai-stat-label { font-size: .75rem; color: var(--sub); margin-bottom: 2px; }
-.ai-stat-value { font-size: .9rem; font-weight: 600; }
+.ai-stat-label {
+  font-size: .67rem; color: var(--subtle); margin-bottom: 3px;
+  text-transform: uppercase; letter-spacing: .6px; font-weight: 600;
+}
+.ai-stat-value { font-size: .875rem; font-weight: 600; color: var(--ink); }
 
 /* ── Observations ── */
 .obs-list { list-style: none; padding: 0; margin-bottom: 24px; }
 .obs-list li {
-  padding: 10px 14px; margin-bottom: 6px;
-  background: var(--card); border-radius: var(--radius-sm);
-  box-shadow: var(--shadow); font-size: .88rem;
-  color: var(--sub); border-left: 3px solid var(--border);
+  padding: 10px 14px; margin-bottom: 4px;
+  background: var(--white); border-radius: var(--radius-sm);
+  border: 1px solid var(--divider);
+  font-size: .84rem; color: var(--muted); line-height: 1.55;
 }
 
 /* ── Metadata table ── */
 .meta-table { width: 100%; border-collapse: collapse; }
-.meta-table tr:not(:last-child) td { border-bottom: 1px solid var(--bg); }
-.meta-table td {
-  padding: 10px 14px; font-size: .88rem;
-  vertical-align: top;
-}
+.meta-table tr:not(:last-child) td { border-bottom: 1px solid var(--divider); }
+.meta-table td { padding: 9px 12px; font-size: .84rem; vertical-align: top; }
 .meta-table td:first-child {
-  font-weight: 600; color: var(--sub);
-  width: 180px; white-space: nowrap;
+  font-size: .69rem; font-weight: 700; color: var(--subtle);
+  letter-spacing: .5px; text-transform: uppercase;
+  width: 170px; white-space: nowrap;
 }
-.meta-table td:last-child { color: var(--text); word-break: break-all; }
+.meta-table td:last-child { color: var(--ink); word-break: break-all; }
 
 /* ── Visual overlay ── */
 #overlay-wrap { display: none; text-align: center; margin-top: 14px; }
-#overlay-canvas { max-width: 100%; border-radius: var(--radius); box-shadow: var(--shadow); }
+#overlay-canvas { max-width: 100%; border-radius: var(--radius); border: 1px solid var(--border); }
 .legend {
-  display: flex; gap: 16px; justify-content: center;
-  margin-top: 10px; font-size: .8rem; color: var(--sub); flex-wrap: wrap;
+  display: flex; gap: 14px; justify-content: center;
+  margin-top: 10px; font-size: .76rem; color: var(--muted); flex-wrap: wrap;
 }
 .legend-dot {
-  display: inline-block; width: 10px; height: 10px;
+  display: inline-block; width: 8px; height: 8px;
   border-radius: 50%; margin-right: 4px; vertical-align: middle;
 }
 
 /* ── Screen footer ── */
-.screen-footer { margin-top: 36px; display: flex; justify-content: center; gap: 12px; flex-wrap: wrap; }
+.screen-footer { margin-top: 40px; display: flex; justify-content: center; gap: 10px; flex-wrap: wrap; }
 
 /* ── Responsive ── */
-@media (max-width: 560px) {
-  .hero { padding: 48px 16px 32px; }
+@media (max-width: 600px) {
+  .hero { padding: 52px 20px 36px; }
   .score-grid { grid-template-columns: 1fr; }
-  .method-grid { grid-template-columns: 1fr; }
+  .methods-list { grid-template-columns: 1fr; }
+  .method-row { border-right: none !important; }
+  .method-row:last-child { border-bottom: none; }
   .btn { width: 100%; justify-content: center; }
   #upload-actions { flex-direction: column; }
   .ai-grid { grid-template-columns: 1fr 1fr; }
@@ -350,112 +405,127 @@ html, body {
 </head>
 <body>
 
+<a class="skip-link" href="#main-content">Skip to main content</a>
+
 <!-- ══════════════════════════════════════════
      SCREEN 1 — WELCOME
 ══════════════════════════════════════════ -->
-<div id="screen-1" class="screen active">
+<div id="screen-1" class="screen active" role="main" id="main-content">
 
-  <nav class="nav">
-    <div class="nav-brand">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+  <nav class="nav" aria-label="App navigation">
+    <div class="nav-brand" aria-label="Deepfake Identifier">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
       Deepfake Identifier
     </div>
-    <div class="nav-steps">
-      <div class="nav-step active" onclick="goTo(1)" title="Introduction"></div>
-      <div class="nav-step" onclick="goTo(2)" title="Upload"></div>
-      <div class="nav-step" onclick="goTo(3)" title="Results"></div>
+    <div class="nav-steps" role="tablist" aria-label="Steps">
+      <button class="nav-step active" onclick="goTo(1)" role="tab" aria-selected="true"  aria-label="Step 1: Introduction"></button>
+      <button class="nav-step"        onclick="goTo(2)" role="tab" aria-selected="false" aria-label="Step 2: Upload"></button>
+      <button class="nav-step"        onclick="goTo(3)" role="tab" aria-selected="false" aria-label="Step 3: Results"></button>
     </div>
   </nav>
 
+  <main id="main-content">
   <div class="hero">
-    <div class="hero-badge">Forensic Image Analysis</div>
-    <h1>Detect <span>Deepfakes</span><br>with AI Precision</h1>
-    <p>10 forensic algorithms + Claude AI vision analysis. Results in seconds — all processing on your device.</p>
+    <div class="hero-eyebrow">Forensic Image Analysis</div>
+    <h1>Detect Deepfakes<br>with AI Precision</h1>
+    <p>10 forensic algorithms + Claude AI vision. Results in seconds — all pixel processing on your device.</p>
     <div class="hero-cta">
       <button class="btn btn-primary" onclick="goTo(2)">Analyze an Image</button>
-      <a class="btn btn-ghost" href="#methods">Learn How It Works</a>
+      <a class="btn btn-ghost" href="#methods">How It Works</a>
     </div>
   </div>
 
   <div class="container">
 
-    <p class="section-label" id="methods">How it works</p>
+    <p class="section-label" id="methods">Two-Layer Detection</p>
     <div class="card">
-      <div class="card-title">Two-layer analysis</div>
-      <div class="card-sub">Your image is first processed by 10 client-side algorithms running entirely in your browser — no data leaves your device. Then, optionally, Claude AI Vision examines the image for subtle visual artifacts that algorithms may miss.</div>
+      <div class="card-title">Client algorithms + AI vision</div>
+      <div class="card-sub">10 forensic methods run entirely in your browser — no image data leaves your device. If the score is ambiguous, Claude AI Vision examines subtle visual artifacts that pixel math cannot detect.</div>
     </div>
 
-    <p class="section-label">Client-side Forensic Methods</p>
-    <div class="method-grid">
-      <div class="method-card">
-        <div class="method-icon">🔬</div>
-        <h4>Error Level Analysis</h4>
-        <p>Re-saves at JPEG quality 75 and amplifies the difference. AI images often show abnormally flat or spiky ELA patterns.</p>
+    <p class="section-label">Forensic Methods</p>
+    <div class="methods-list" role="list">
+      <div class="method-row" role="listitem">
+        <span class="method-num" aria-hidden="true">01</span>
+        <div>
+          <div class="method-name">Error Level Analysis</div>
+          <div class="method-desc">Compares JPEG re-compressions; AI images show abnormally flat or uniform ELA patterns.</div>
+        </div>
       </div>
-      <div class="method-card">
-        <div class="method-icon">📡</div>
-        <h4>Noise Analysis</h4>
-        <p>Extracts luminance noise via 3×3 residuals. GAN outputs are unnaturally smooth with near-zero noise floor.</p>
+      <div class="method-row" role="listitem">
+        <span class="method-num" aria-hidden="true">02</span>
+        <div>
+          <div class="method-name">Noise Analysis</div>
+          <div class="method-desc">Laplacian high-pass filter + patch uniformity. GAN outputs have near-zero noise floors.</div>
+        </div>
       </div>
-      <div class="method-card">
-        <div class="method-icon">📊</div>
-        <h4>Frequency Analysis</h4>
-        <p>Autocorrelation at lags 8/16/32. Convolutional upsampling in GANs leaves periodic spatial artifacts.</p>
+      <div class="method-row" role="listitem">
+        <span class="method-num" aria-hidden="true">03</span>
+        <div>
+          <div class="method-name">Frequency Analysis</div>
+          <div class="method-desc">Autocorrelation at lags 8/16/32. Convolutional upsampling leaves periodic spatial artifacts.</div>
+        </div>
       </div>
-      <div class="method-card">
-        <div class="method-icon">🎨</div>
-        <h4>Color Coherence</h4>
-        <p>Hue entropy + saturation variance. Diffusion models produce suspiciously narrow, uniform color distributions.</p>
+      <div class="method-row" role="listitem">
+        <span class="method-num" aria-hidden="true">04</span>
+        <div>
+          <div class="method-name">Color Coherence</div>
+          <div class="method-desc">Hue entropy + saturation variance. Diffusion models produce suspiciously narrow palettes.</div>
+        </div>
       </div>
-      <div class="method-card">
-        <div class="method-icon">✂️</div>
-        <h4>Edge Integrity</h4>
-        <p>Sobel edge density coefficient of variation. Face-swap masks often flatten local sharpness variation unnaturally.</p>
+      <div class="method-row" role="listitem">
+        <span class="method-num" aria-hidden="true">05</span>
+        <div>
+          <div class="method-name">Edge Integrity</div>
+          <div class="method-desc">Sobel edge density CoV. Face-swap masks flatten local sharpness variation unnaturally.</div>
+        </div>
       </div>
-      <div class="method-card">
-        <div class="method-icon">🏷️</div>
-        <h4>Metadata Presence</h4>
-        <p>Scans binary headers for EXIF/XMP. Real photos carry device metadata; AI images almost never do.</p>
+      <div class="method-row" role="listitem">
+        <span class="method-num" aria-hidden="true">06</span>
+        <div>
+          <div class="method-name">Metadata Presence</div>
+          <div class="method-desc">Scans binary headers for EXIF/XMP. Real photos carry device data; AI images rarely do.</div>
+        </div>
       </div>
-      <div class="method-card">
-        <div class="method-icon">🧵</div>
-        <h4>Texture Complexity</h4>
-        <p>Local Binary Pattern entropy across 8×8 blocks. AI images often show homogeneous, low-entropy texture fields.</p>
+      <div class="method-row" role="listitem">
+        <span class="method-num" aria-hidden="true">07</span>
+        <div>
+          <div class="method-name">Texture Complexity</div>
+          <div class="method-desc">Local Binary Pattern entropy. AI images often show homogeneous, low-entropy texture fields.</div>
+        </div>
       </div>
-      <div class="method-card">
-        <div class="method-icon">🟦</div>
-        <h4>DCT Block Artifacts</h4>
-        <p>Measures 8×8 block boundary discontinuities. AI generation and face-swap introduce distinctive blocking patterns.</p>
+      <div class="method-row" role="listitem">
+        <span class="method-num" aria-hidden="true">08</span>
+        <div>
+          <div class="method-name">Sharpness Uniformity</div>
+          <div class="method-desc">Patch-level variance map. Diffusion models lack real lens blur and focus falloff.</div>
+        </div>
       </div>
-      <div class="method-card">
-        <div class="method-icon">📈</div>
-        <h4>Channel Statistics</h4>
-        <p>RGB skewness and kurtosis. Real photos follow natural statistical distributions; synthetic images often deviate.</p>
+      <div class="method-row" role="listitem">
+        <span class="method-num" aria-hidden="true">09</span>
+        <div>
+          <div class="method-name">Channel Statistics</div>
+          <div class="method-desc">RGB skewness and kurtosis. Synthetic images deviate from natural photo distributions.</div>
+        </div>
       </div>
-      <div class="method-card">
-        <div class="method-icon">⚖️</div>
-        <h4>Symmetry Analysis</h4>
-        <p>Bilateral pixel symmetry deviation. GAN-generated faces often show unnatural left-right symmetry patterns.</p>
+      <div class="method-row" role="listitem">
+        <span class="method-num" aria-hidden="true">10</span>
+        <div>
+          <div class="method-name">Symmetry Analysis</div>
+          <div class="method-desc">Bilateral pixel symmetry deviation. GAN faces show atypical left-right symmetry profiles.</div>
+        </div>
       </div>
-    </div>
-
-    <p class="section-label">AI-Powered Analysis</p>
-    <div class="card">
-      <div class="card-title" style="display:flex;align-items:center;gap:8px;">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2"><path d="M12 2a10 10 0 1 0 10 10"/><path d="M12 8v4l3 3"/></svg>
-        Claude AI Vision
-      </div>
-      <div class="card-sub">Sends your image to Claude claude-opus-4-6 for expert-level analysis of skin texture, lighting consistency, background artifacts, face symmetry, and other subtle visual tells that pixel algorithms cannot detect.</div>
     </div>
 
     <div class="disclaimer">
-      <strong>Limitation notice:</strong> These are heuristic forensic techniques. No method achieves perfect accuracy. Results are <em>indicative</em>, not conclusive. Do not use to make real-world judgements about individuals.
+      <strong>Limitation notice:</strong> Heuristic forensic techniques — no method achieves perfect accuracy. Results are <em>indicative</em>, not conclusive. Do not use to make real-world judgements about individuals.
     </div>
 
     <div class="screen-footer">
-      <button class="btn btn-primary" onclick="goTo(2)">Start Analysis →</button>
+      <button class="btn btn-primary" onclick="goTo(2)">Start Analysis</button>
     </div>
   </div>
+  </main>
 </div>
 
 
@@ -464,57 +534,74 @@ html, body {
 ══════════════════════════════════════════ -->
 <div id="screen-2" class="screen">
 
-  <nav class="nav">
-    <div class="nav-brand">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+  <nav class="nav" aria-label="App navigation">
+    <div class="nav-brand" aria-label="Deepfake Identifier">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
       Deepfake Identifier
     </div>
-    <div class="nav-steps">
-      <div class="nav-step" onclick="goTo(1)"></div>
-      <div class="nav-step active" onclick="goTo(2)"></div>
-      <div class="nav-step" onclick="goTo(3)"></div>
+    <div class="nav-steps" role="tablist" aria-label="Steps">
+      <button class="nav-step"        onclick="goTo(1)" role="tab" aria-selected="false" aria-label="Step 1: Introduction"></button>
+      <button class="nav-step active" onclick="goTo(2)" role="tab" aria-selected="true"  aria-label="Step 2: Upload"></button>
+      <button class="nav-step"        onclick="goTo(3)" role="tab" aria-selected="false" aria-label="Step 3: Results"></button>
     </div>
   </nav>
 
-  <div style="padding-top:48px;">
+  <main style="padding-top:48px;">
   <div class="container">
 
-    <div style="margin-bottom:32px;">
-      <h2 style="font-size:1.8rem;font-weight:700;letter-spacing:-0.5px;margin-bottom:8px;">Upload Image</h2>
-      <p style="color:var(--sub);">Drag and drop or click to select. Supported: JPG · PNG · WEBP</p>
+    <div style="margin-bottom:28px;">
+      <h2 style="font-size:1.7rem;font-weight:800;letter-spacing:-0.8px;margin-bottom:6px;">Upload Image</h2>
+      <p style="color:var(--muted);font-size:.9rem;">Drop a file or click to browse. JPG · PNG · WEBP up to 20 MB.</p>
     </div>
 
-    <div id="drop-zone" onclick="document.getElementById('file-input').click()">
-      <div class="dz-icon">🖼️</div>
-      <p><strong>Drop image here</strong> or click to browse</p>
-      <p style="margin-top:6px;font-size:.82rem;">Max 20 MB · JPG · PNG · WEBP</p>
-      <input type="file" id="file-input" accept="image/jpeg,image/png,image/webp">
-    </div>
+    <label for="file-input" style="display:block;">
+      <div
+        id="drop-zone"
+        role="button"
+        tabindex="0"
+        aria-label="Upload image — drop file here or press Enter to browse"
+        onclick="document.getElementById('file-input').click()"
+        onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();document.getElementById('file-input').click();}"
+      >
+        <div class="dz-icon" aria-hidden="true">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+            <rect x="3" y="3" width="18" height="18" rx="2"/>
+            <circle cx="8.5" cy="8.5" r="1.5"/>
+            <polyline points="21 15 16 10 5 21"/>
+          </svg>
+        </div>
+        <p><strong>Drop image here</strong> or click to browse</p>
+        <p style="margin-top:5px;font-size:.78rem;color:var(--subtle);">Max 20 MB · JPG · PNG · WEBP</p>
+      </div>
+      <input type="file" id="file-input" name="image" accept="image/jpeg,image/png,image/webp" aria-label="Choose image file" style="display:none;">
+    </label>
 
     <div id="preview-wrap">
-      <img id="preview-img" src="" alt="Preview">
+      <img id="preview-img" src="" alt="Selected image preview" width="600" height="400" style="object-fit:contain;">
       <div id="preview-info"></div>
     </div>
 
     <div id="progress-wrap">
       <div id="progress-label">Initializing…</div>
-      <div class="progress-bg"><div id="progress-fill"></div></div>
+      <div class="progress-bg" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0" aria-label="Analysis progress">
+        <div id="progress-fill"></div>
+      </div>
     </div>
 
     <div id="upload-actions">
-      <button class="btn btn-primary" id="analyze-btn" onclick="startAnalysis()" disabled>
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+      <button class="btn btn-primary" id="analyze-btn" onclick="startAnalysis()" disabled aria-disabled="true">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
         Analyze Image
       </button>
       <button class="btn btn-ghost btn-sm" onclick="resetUpload()">Clear</button>
     </div>
 
-    <div class="disclaimer" style="margin-top:28px;">
+    <div class="disclaimer" style="margin-top:24px;">
       Client-side analysis runs entirely in your browser. Your image is sent to Claude AI only when you click Analyze — it is never stored.
     </div>
 
   </div>
-  </div>
+  </main>
 </div>
 
 
@@ -523,20 +610,23 @@ html, body {
 ══════════════════════════════════════════ -->
 <div id="screen-3" class="screen">
 
-  <nav class="nav">
-    <div class="nav-brand">
-      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
+  <nav class="nav" aria-label="App navigation">
+    <div class="nav-brand" aria-label="Deepfake Identifier">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg>
       Deepfake Identifier
     </div>
-    <div class="nav-steps">
-      <div class="nav-step" onclick="goTo(1)"></div>
-      <div class="nav-step" onclick="goTo(2)"></div>
-      <div class="nav-step active" onclick="goTo(3)"></div>
+    <div class="nav-steps" role="tablist" aria-label="Steps">
+      <button class="nav-step"        onclick="goTo(1)" role="tab" aria-selected="false" aria-label="Step 1: Introduction"></button>
+      <button class="nav-step"        onclick="goTo(2)" role="tab" aria-selected="false" aria-label="Step 2: Upload"></button>
+      <button class="nav-step active" onclick="goTo(3)" role="tab" aria-selected="true"  aria-label="Step 3: Results"></button>
     </div>
   </nav>
 
+  <main>
   <!-- Verdict hero -->
   <div id="verdict-hero">
+    <div class="verdict-eyebrow">Forensic Analysis Result</div>
+    <div class="verdict-score-num" id="verdict-score" aria-live="polite">—</div>
     <div id="verdict-badge">—</div>
     <div id="verdict-sub"></div>
   </div>
@@ -547,10 +637,18 @@ html, body {
     <div class="conf-row">
       <div class="conf-labels">
         <span>Synthetic Suspicion Score</span>
-        <span id="conf-pct" style="font-weight:600;">0%</span>
+        <span id="conf-pct" style="font-weight:700;font-variant-numeric:tabular-nums;">0%</span>
       </div>
-      <div class="conf-bg"><div id="conf-fill" style="width:0%"></div></div>
-      <div class="conf-endpoints"><span>Likely Real</span><span>Likely Deepfake</span></div>
+      <div class="conf-bg"
+           role="progressbar"
+           aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"
+           aria-label="Suspicion score">
+        <div id="conf-fill" style="width:0%"></div>
+      </div>
+      <div class="conf-endpoints">
+        <span>Likely Real</span>
+        <span>Likely Deepfake</span>
+      </div>
     </div>
 
     <!-- Claude AI Analysis -->
@@ -562,7 +660,7 @@ html, body {
       </div>
       <div id="ai-content">
         <div class="ai-loading">
-          <div class="spinner"></div>
+          <div class="spinner" aria-hidden="true"></div>
           Sending to Claude AI for visual analysis…
         </div>
       </div>
@@ -574,26 +672,28 @@ html, body {
 
     <!-- Key observations -->
     <p class="section-label">Key Observations</p>
-    <ul class="obs-list" id="obs-list"></ul>
+    <ul class="obs-list" id="obs-list" aria-label="Analysis observations"></ul>
 
     <!-- Visual overlay -->
     <p class="section-label">Visual Anomaly Overlay</p>
     <div class="card">
-      <button class="btn btn-secondary btn-sm" id="overlay-btn" onclick="toggleOverlay()">Show Overlay</button>
-      <div id="overlay-wrap">
-        <canvas id="overlay-canvas"></canvas>
+      <button class="btn btn-ghost btn-sm" id="overlay-btn" onclick="toggleOverlay()" aria-expanded="false">
+        Show Overlay
+      </button>
+      <div id="overlay-wrap" aria-hidden="true">
+        <canvas id="overlay-canvas" role="img" aria-label="Visual anomaly heatmap"></canvas>
         <div class="legend">
-          <span><span class="legend-dot" style="background:#ff3b30;"></span>High suspicion</span>
-          <span><span class="legend-dot" style="background:#ff9f0a;"></span>Medium</span>
-          <span><span class="legend-dot" style="background:#34c759;"></span>Low suspicion</span>
+          <span><span class="legend-dot" style="background:#ff3b30;" aria-hidden="true"></span>High suspicion</span>
+          <span><span class="legend-dot" style="background:#ff9f0a;" aria-hidden="true"></span>Medium</span>
+          <span><span class="legend-dot" style="background:#34c759;" aria-hidden="true"></span>Low suspicion</span>
         </div>
       </div>
     </div>
 
     <!-- Image Metadata -->
-    <p class="section-label">Image Metadata &amp; File Information</p>
+    <p class="section-label">Image Metadata</p>
     <div class="card">
-      <table class="meta-table" id="meta-table">
+      <table class="meta-table" id="meta-table" aria-label="Image metadata">
         <tbody></tbody>
       </table>
     </div>
@@ -601,7 +701,7 @@ html, body {
     <!-- Pixel Statistics -->
     <p class="section-label">Pixel Statistics</p>
     <div class="card">
-      <table class="meta-table" id="stats-table">
+      <table class="meta-table" id="stats-table" aria-label="Pixel statistics">
         <tbody></tbody>
       </table>
     </div>
@@ -612,12 +712,13 @@ html, body {
     </div>
 
   </div>
+  </main>
 </div>
 
 <!-- Hidden canvases for computation -->
-<canvas id="work-canvas"  style="display:none"></canvas>
-<canvas id="ela-canvas"   style="display:none"></canvas>
-<canvas id="noise-canvas" style="display:none"></canvas>
+<canvas id="work-canvas"  style="display:none" aria-hidden="true"></canvas>
+<canvas id="ela-canvas"   style="display:none" aria-hidden="true"></canvas>
+<canvas id="noise-canvas" style="display:none" aria-hidden="true"></canvas>
 
 <script>
 // ══════════════════════════════════════════════════════
@@ -625,17 +726,22 @@ html, body {
 // ══════════════════════════════════════════════════════
 function goTo(n) {
   document.querySelectorAll('.screen').forEach(s => {
-    s.classList.remove('active');
+    s.classList.remove('active', 'fade-in');
     s.style.display = '';
   });
   const t = document.getElementById('screen-' + n);
   t.style.display = 'block';
-  t.style.opacity = '0';
-  requestAnimationFrame(() => requestAnimationFrame(() => {
-    t.style.opacity = '1';
-    t.classList.add('active');
-  }));
-  document.querySelectorAll('.nav-step').forEach((d, i) => d.classList.toggle('active', i === n - 1));
+  t.classList.add('active');
+  // Defer class add so animation triggers
+  requestAnimationFrame(() => t.classList.add('fade-in'));
+
+  // Update nav step buttons across all screens
+  document.querySelectorAll('.nav-step').forEach((d, i) => {
+    const active = (i % 3) === (n - 1);
+    d.classList.toggle('active', active);
+    d.setAttribute('aria-selected', active ? 'true' : 'false');
+  });
+
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -676,11 +782,15 @@ function loadFile(file) {
       wc.getContext('2d').drawImage(img, 0, 0, wc.width, wc.height);
       currentImageData = wc.getContext('2d').getImageData(0, 0, wc.width, wc.height);
 
-      document.getElementById('preview-img').src = e.target.result;
+      const previewImg = document.getElementById('preview-img');
+      previewImg.src = e.target.result;
+      previewImg.width  = Math.min(600, img.naturalWidth);
+      previewImg.height = Math.round(Math.min(600, img.naturalWidth) / img.naturalWidth * img.naturalHeight);
       document.getElementById('preview-info').textContent =
         file.name + ' · ' + (file.size / 1024).toFixed(1) + ' KB · ' + img.width + '×' + img.height + 'px';
       document.getElementById('preview-wrap').style.display = 'block';
       analyzeBtn.disabled = false;
+      analyzeBtn.removeAttribute('aria-disabled');
       document.getElementById('progress-wrap').style.display = 'none';
       document.getElementById('progress-fill').style.width = '0%';
     };
@@ -695,7 +805,9 @@ function resetUpload() {
   document.getElementById('preview-img').src = '';
   document.getElementById('progress-wrap').style.display = 'none';
   document.getElementById('progress-fill').style.width = '0%';
-  fileInput.value = ''; analyzeBtn.disabled = true;
+  fileInput.value = '';
+  analyzeBtn.disabled = true;
+  analyzeBtn.setAttribute('aria-disabled', 'true');
 }
 
 // ══════════════════════════════════════════════════════
@@ -721,6 +833,7 @@ let pixelStats = {};
 async function startAnalysis() {
   if (!currentImageData) return;
   analyzeBtn.disabled = true;
+  analyzeBtn.setAttribute('aria-disabled', 'true');
   document.getElementById('progress-wrap').style.display = 'block';
   const scores = {};
   for (let i = 0; i < STEPS.length; i++) {
@@ -735,20 +848,22 @@ async function startAnalysis() {
   setProgress(100, 'Done!');
   await sleep(150);
 
-  // Populate metadata & stats before showing results
   populateMetadata();
   populateStats();
 
   renderResults(scores, result);
   goTo(3);
   analyzeBtn.disabled = false;
+  analyzeBtn.removeAttribute('aria-disabled');
 
-  // Fire Claude API call after showing results
   runClaudeAnalysis(result.composite);
 }
 
 function setProgress(pct, label) {
-  document.getElementById('progress-fill').style.width = pct + '%';
+  const fill = document.getElementById('progress-fill');
+  const bar  = document.querySelector('.progress-bg[role="progressbar"]');
+  fill.style.width = pct + '%';
+  if (bar) bar.setAttribute('aria-valuenow', Math.round(pct));
   document.getElementById('progress-label').textContent = label;
 }
 function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
@@ -763,9 +878,6 @@ async function runELA() {
   const ec = document.getElementById('ela-canvas');
   ec.width = w; ec.height = h;
 
-  // PNG/WebP: comparing lossless-vs-JPEG gives meaningless diffs.
-  // Instead, compare two JPEG compressions (85% vs 60%) — the diff
-  // isolates compression behaviour, not the format gap.
   const isJpeg = currentFile && currentFile.type === 'image/jpeg';
   const q1 = isJpeg ? 0.92 : 0.85;
   const q2 = 0.60;
@@ -801,11 +913,8 @@ async function runELA() {
   const cv       = meanErr > 0 ? Math.sqrt(Math.max(0, variance)) / meanErr : 0;
   const highRatio = highPix / pixels;
 
-  // Low coefficient-of-variation = suspiciously uniform ELA = AI signal
   const uniformSuspicion  = Math.max(0, 1 - cv / 0.85) * 55;
-  // Unusually low overall ELA = over-smooth surface = AI signal
   const smoothSuspicion   = Math.max(0, 1 - meanErr / 35) * 25;
-  // Anomalous high-error pockets (compositing)
   const pocketSuspicion   = Math.min(highRatio * 250, 20);
 
   return Math.min(100, Math.round(uniformSuspicion + smoothSuspicion + pocketSuspicion));
@@ -826,9 +935,6 @@ async function runNoise() {
     const p = i*4; lum[i] = 0.299*data[p] + 0.587*data[p+1] + 0.114*data[p+2];
   }
 
-  // Laplacian high-pass filter — better noise extraction than box-blur residual
-  // Real camera sensor noise is strong and spatially random.
-  // AI/diffusion outputs are over-smooth: Laplacian response near-zero.
   let lapSum = 0, lapSqSum = 0, lapCount = 0;
   for (let y = 1; y < h-1; y++) {
     for (let x = 1; x < w-1; x++) {
@@ -843,7 +949,6 @@ async function runNoise() {
   const lapVar  = lapSqSum / lapCount - lapMean * lapMean;
   const lapStd  = Math.sqrt(Math.max(0, lapVar));
 
-  // Measure patch-level noise uniformity (AI images are uniform across the whole image)
   const ps = 24;
   const patchMeans = [];
   for (let py = 0; py < h - ps; py += ps) {
@@ -861,9 +966,7 @@ async function runNoise() {
   const pVar  = patchMeans.reduce((a,b)=>a+(b-pMean)**2,0) / patchMeans.length;
   const pCV   = pMean > 0 ? Math.sqrt(pVar) / pMean : 0;
 
-  // Low Laplacian mean = over-smooth (strong AI indicator for diffusion models)
   const smoothSuspicion  = Math.max(0, 1 - lapMean / 7) * 55;
-  // Low patch CV = suspiciously uniform noise field across the image
   const uniformSuspicion = Math.max(0, 1 - pCV / 0.65) * 45;
 
   return Math.min(100, Math.round(smoothSuspicion + uniformSuspicion));
@@ -1014,10 +1117,9 @@ function analyzeHeaders(buf, mime) {
                         raw.includes('datetime')||raw.includes('GPS');
     const hasSoftwareMeta=raw.includes('tEXt')||raw.includes('iTXt')||
                           raw.includes('Software')||raw.includes('Comment')||raw.includes('Creation Time');
-    // AI generators (Gemini, SD, Midjourney) NEVER embed camera data in PNG output.
-    if (hasCameraData)   return 15;  // real camera data — strongly suggests authentic photo
-    if (hasSoftwareMeta) return 45;  // software metadata only — moderately suspicious
-    return 78;                       // completely bare PNG — very strong AI indicator
+    if (hasCameraData)   return 15;
+    if (hasSoftwareMeta) return 45;
+    return 78;
   }
   if (mime==='image/webp') {
     const raw=new TextDecoder('latin1').decode(buf.slice(0,Math.min(buf.length,32768)));
@@ -1046,12 +1148,9 @@ async function runTexture() {
     }
     hist[lbp]++; total++;
   }
-  // LBP entropy — low entropy means homogeneous, AI-like texture
   let entropy=0;
   for (let i=0;i<256;i++) { const p=hist[i]/total; if(p>0) entropy-=p*Math.log2(p); }
   const maxEntropy=Math.log2(256);
-  // Calibrated at 0.62: real photos typically reach >62% of max entropy;
-  // AI images (especially diffusion/Gemini) are more homogeneous, landing below that.
   const homogeneity=Math.max(0,1-entropy/(maxEntropy*0.62));
   return Math.min(100, Math.round(homogeneity*100));
 }
@@ -1059,9 +1158,6 @@ async function runTexture() {
 
 // ══════════════════════════════════════════════════════
 //  ALGORITHM 8 — SHARPNESS UNIFORMITY
-//  Replaces DCT Block Artifacts (useless for PNG/WebP)
-//  Real photos have focus gradients and lens blur variation.
-//  Diffusion/Gemini images are hyper-sharp and uniformly so.
 // ══════════════════════════════════════════════════════
 async function runSharpness() {
   const { data, width: w, height: h } = currentImageData;
@@ -1070,7 +1166,6 @@ async function runSharpness() {
     const p = i*4; lum[i] = 0.299*data[p] + 0.587*data[p+1] + 0.114*data[p+2];
   }
 
-  // Local variance = local sharpness proxy
   const ps = 28;
   const sharpVals = [];
   for (let py = 0; py < h - ps; py += ps) {
@@ -1089,11 +1184,7 @@ async function runSharpness() {
   const sVar  = sharpVals.reduce((a,b)=>a+(b-sMean)**2,0) / sharpVals.length;
   const sCV   = sMean > 0 ? Math.sqrt(sVar) / sMean : 0;
 
-  // Very LOW coefficient of variation = unnaturally uniform sharpness = AI
-  // Real photos: sCV typically 0.5–1.2; AI images: often 0.1–0.4
-  const uniformSuspicion = Math.max(0, 1 - sCV / 0.55) * 65;
-
-  // Suspiciously HIGH mean sharpness (AI images are hyper-detailed, no lens blur)
+  const uniformSuspicion    = Math.max(0, 1 - sCV / 0.55) * 65;
   const hyperSharpSuspicion = Math.min(sMean / 40 * 35, 35);
 
   return Math.min(100, Math.round(uniformSuspicion + hyperSharpSuspicion));
@@ -1119,11 +1210,9 @@ async function runChannelStats() {
   }
   pixelStats.channels=stats;
 
-  // Unusual skewness (extreme values) is suspicious
   const skews=['r','g','b'].map(c=>Math.abs(parseFloat(stats[c].skewness)));
   const maxSkew=Math.max(...skews);
-  // Real photos: skewness typically -1 to +1; AI: can be extreme or near-zero
-  const extremeSkew = Math.min(maxSkew/3*50, 50);
+  const extremeSkew  = Math.min(maxSkew/3*50, 50);
   const nearZeroSkew = Math.max(0, 1-maxSkew/0.5)*50;
   return Math.min(100, Math.round(extremeSkew + nearZeroSkew));
 }
@@ -1134,7 +1223,6 @@ async function runChannelStats() {
 // ══════════════════════════════════════════════════════
 async function runSymmetry() {
   const { data, width: w, height: h } = currentImageData;
-  // Sample horizontal symmetry (left vs right half luminance)
   const sampleRows = Math.min(50, h);
   const rowStep = Math.max(1, Math.floor(h/sampleRows));
   let symDiff=0, count=0;
@@ -1151,10 +1239,8 @@ async function runSymmetry() {
   const meanSymDiff = count>0?symDiff/count:0;
   pixelStats.symmetry=meanSymDiff.toFixed(2);
 
-  // GAN faces: often unnaturally symmetric (low diff) or asymmetric (high diff)
-  // Natural photos: moderate asymmetry (~15-40)
-  const lowSym  = Math.max(0, 1-meanSymDiff/15)*45;   // too symmetric
-  const highSym = Math.min(Math.max(0,(meanSymDiff-60)/40)*30, 30); // too asymmetric
+  const lowSym  = Math.max(0, 1-meanSymDiff/15)*45;
+  const highSym = Math.min(Math.max(0,(meanSymDiff-60)/40)*30, 30);
   return Math.min(100, Math.round(lowSym + highSym));
 }
 
@@ -1172,7 +1258,6 @@ function computeVerdict(scores) {
   for (const [k,w] of Object.entries(W)) { ws+=(scores[k]||0)*w; tw+=w; }
   const composite=Math.round(ws/tw);
   let verdict, vc;
-  // Stricter thresholds: modern diffusion models (Gemini, SD, MJ) score 50-70
   if      (composite<26){verdict='LIKELY REAL';     vc='v-real';}
   else if (composite<50){verdict='SUSPICIOUS';      vc='v-suspect';}
   else                  {verdict='LIKELY DEEPFAKE'; vc='v-fake';}
@@ -1220,57 +1305,69 @@ function buildObs(s) {
 //  RENDER RESULTS
 // ══════════════════════════════════════════════════════
 const METHOD_META = {
-  runELA:           { label:'Error Level Analysis', icon:'🔬', weight:1.5 },
-  runNoise:         { label:'Noise Analysis',        icon:'📡', weight:2.2 },
-  runFrequency:     { label:'Frequency Analysis',    icon:'📊', weight:0.9 },
-  runColorCoherence:{ label:'Color Coherence',       icon:'🎨', weight:1.0 },
-  runEdgeIntegrity: { label:'Edge Integrity',        icon:'✂️', weight:1.2 },
-  checkMetadata:    { label:'Metadata Presence',     icon:'🏷️', weight:2.5 },
-  runTexture:       { label:'Texture Complexity',    icon:'🧵', weight:1.8 },
-  runSharpness:     { label:'Sharpness Uniformity',  icon:'🔲', weight:1.4 },
-  runChannelStats:  { label:'Channel Statistics',    icon:'📈', weight:0.8 },
-  runSymmetry:      { label:'Symmetry Analysis',     icon:'⚖️', weight:0.7 },
+  runELA:           { label:'Error Level Analysis', weight:1.5 },
+  runNoise:         { label:'Noise Analysis',        weight:2.2 },
+  runFrequency:     { label:'Frequency Analysis',    weight:0.9 },
+  runColorCoherence:{ label:'Color Coherence',       weight:1.0 },
+  runEdgeIntegrity: { label:'Edge Integrity',        weight:1.2 },
+  checkMetadata:    { label:'Metadata Presence',     weight:2.5 },
+  runTexture:       { label:'Texture Complexity',    weight:1.8 },
+  runSharpness:     { label:'Sharpness Uniformity',  weight:1.4 },
+  runChannelStats:  { label:'Channel Statistics',    weight:0.8 },
+  runSymmetry:      { label:'Symmetry Analysis',     weight:0.7 },
 };
 
 function renderResults(scores, result) {
   lastScores = scores; overlayShown = false;
 
-  // Verdict badge
-  const badge=document.getElementById('verdict-badge');
-  badge.textContent=result.verdict; badge.className=''; badge.classList.add(result.vc);
+  // Verdict hero
+  document.getElementById('verdict-score').textContent = result.composite + '%';
+  const badge = document.getElementById('verdict-badge');
+  badge.textContent = result.verdict;
+  badge.className = '';
+  badge.classList.add(result.vc);
   document.getElementById('verdict-sub').textContent =
-    (currentFile?currentFile.name+' · ':'')+result.composite+'% suspicion score';
+    (currentFile ? currentFile.name + ' · ' : '') + result.composite + '% suspicion score';
 
   // Confidence bar
-  document.getElementById('conf-pct').textContent=result.composite+'%';
-  const fill=document.getElementById('conf-fill');
-  fill.style.width=result.composite+'%';
-  fill.style.background=result.composite<30?'#34c759':result.composite<60?'#ff9f0a':'#ff3b30';
+  const pct = result.composite;
+  document.getElementById('conf-pct').textContent = pct + '%';
+  const fill = document.getElementById('conf-fill');
+  fill.style.width = pct + '%';
+  // Greyscale: low = light grey, mid = mid grey, high = near-black
+  fill.style.background = pct < 30 ? '#aaaaaa' : pct < 60 ? '#666666' : '#111111';
+  const bar = document.querySelector('#screen-3 .conf-bg[role="progressbar"]');
+  if (bar) bar.setAttribute('aria-valuenow', pct);
 
   // Score grid
-  const grid=document.getElementById('score-grid'); grid.innerHTML='';
-  for (const [key,meta] of Object.entries(METHOD_META)) {
-    const sc=scores[key]??0;
-    const pilC=sc<33?'pill-low':sc<66?'pill-mid':'pill-high';
-    const barC=sc<33?'#34c759':sc<66?'#ff9f0a':'#ff3b30';
-    grid.innerHTML+=`
+  const grid = document.getElementById('score-grid');
+  grid.innerHTML = '';
+  for (const [key, meta] of Object.entries(METHOD_META)) {
+    const sc = scores[key] ?? 0;
+    const pilC  = sc < 33 ? 'pill-low' : sc < 66 ? 'pill-mid' : 'pill-high';
+    const barC  = sc < 33 ? '#cccccc'  : sc < 66 ? '#888888'  : '#111111';
+    grid.innerHTML += `
       <div class="score-card">
         <div class="score-head">
-          <h4>${meta.icon} ${meta.label}</h4>
+          <h4>${meta.label}</h4>
           <span class="score-pill ${pilC}">${sc}</span>
         </div>
-        <div class="score-bar-bg"><div class="score-bar-fill" style="width:${sc}%;background:${barC}"></div></div>
+        <div class="score-bar-bg"><div class="score-bar-fill" style="width:${sc}%;background:${barC}" role="presentation"></div></div>
         <div class="score-finding">Weight: ${meta.weight}×</div>
       </div>`;
   }
 
   // Observations
-  const obsList=document.getElementById('obs-list'); obsList.innerHTML='';
-  result.observations.forEach(o => { obsList.innerHTML+=`<li>${o}</li>`; });
+  const obsList = document.getElementById('obs-list');
+  obsList.innerHTML = '';
+  result.observations.forEach(o => { obsList.innerHTML += `<li>${o}</li>`; });
 
   // Reset overlay
-  document.getElementById('overlay-wrap').style.display='none';
-  document.getElementById('overlay-btn').textContent='Show Overlay';
+  document.getElementById('overlay-wrap').style.display = 'none';
+  document.getElementById('overlay-wrap').setAttribute('aria-hidden', 'true');
+  const overlayBtn = document.getElementById('overlay-btn');
+  overlayBtn.textContent = 'Show Overlay';
+  overlayBtn.setAttribute('aria-expanded', 'false');
 }
 
 
@@ -1287,20 +1384,20 @@ async function runClaudeAnalysis(compositeScore) {
   if (compositeScore >= AI_SKIP_THRESHOLD) {
     ai.innerHTML = `
       <div style="display:flex;align-items:flex-start;gap:12px;">
-        <span style="font-size:1.4rem;flex-shrink:0;">⚡</span>
         <div>
           <div style="font-weight:600;margin-bottom:4px;">AI Analysis skipped</div>
-          <div style="font-size:.88rem;color:var(--sub);line-height:1.6;">
-            The 10 forensic algorithms already returned a
-            <strong style="color:#ff3b30;">high suspicion score (${compositeScore}%)</strong> —
-            the verdict is clear. Claude AI Vision was not called to avoid unnecessary API costs.<br>
-            <button onclick="forceClaudeAnalysis()" style="
-              margin-top:10px;background:none;border:1.5px solid var(--blue);
-              color:var(--blue);border-radius:980px;padding:6px 16px;
-              font-size:.82rem;font-weight:600;cursor:pointer;">
-              Run AI Analysis anyway
-            </button>
+          <div style="font-size:.875rem;color:var(--muted);line-height:1.65;">
+            The 10 forensic algorithms returned a
+            <strong>high suspicion score (${compositeScore}%)</strong> —
+            the verdict is clear. Claude AI Vision was not called to avoid unnecessary API costs.
           </div>
+          <button onclick="forceClaudeAnalysis()" style="
+            margin-top:12px;background:none;border:1.5px solid var(--ink);
+            color:var(--ink);border-radius:6px;padding:7px 16px;
+            font-size:.84rem;font-weight:600;cursor:pointer;touch-action:manipulation;"
+            aria-label="Run Claude AI analysis anyway">
+            Run AI Analysis Anyway
+          </button>
         </div>
       </div>`;
     return;
@@ -1315,7 +1412,7 @@ async function forceClaudeAnalysis() {
 }
 
 async function callClaudeAPI(aiEl) {
-  aiEl.innerHTML = `<div class="ai-loading"><div class="spinner"></div>Analyzing with Claude AI Vision…</div>`;
+  aiEl.innerHTML = `<div class="ai-loading"><div class="spinner" aria-hidden="true"></div>Analyzing with Claude AI Vision…</div>`;
   try {
     const resp = await fetch('/api/analyze', {
       method: 'POST',
@@ -1327,22 +1424,23 @@ async function callClaudeAPI(aiEl) {
     renderAIResult(json.analysis);
   } catch (err) {
     aiEl.innerHTML = `
-      <div style="color:var(--sub);font-size:.9rem;">
-        <strong style="color:#ff3b30;">Claude AI unavailable:</strong> ${err.message}<br>
+      <div style="font-size:.875rem;color:var(--muted);">
+        <strong style="color:var(--ink);">Claude AI unavailable:</strong> ${err.message}<br>
         <span style="font-size:.82rem;">Make sure the server is running with a valid API key.</span>
       </div>`;
   }
 }
 
 function renderAIResult(a) {
-  const vc = a.verdict==='LIKELY_REAL'?'v-real':a.verdict==='LIKELY_FAKE'?'v-fake':'v-suspect';
-  const vcLabel=a.verdict==='LIKELY_REAL'?'Likely Real':a.verdict==='LIKELY_FAKE'?'Likely Deepfake':'Suspicious';
-  const confColor=a.confidenceScore<40?'#34c759':a.confidenceScore<65?'#ff9f0a':'#ff3b30';
-  const anomalies=(a.anomalies||[]).map(x=>`<li>${x}</li>`).join('');
-  const evidence=(a.keyEvidence||[]).map(x=>`<li>${x}</li>`).join('');
-  document.getElementById('ai-content').innerHTML=`
+  const vc = a.verdict==='LIKELY_REAL' ? 'v-real' : a.verdict==='LIKELY_FAKE' ? 'v-fake' : 'v-suspect';
+  const vcLabel = a.verdict==='LIKELY_REAL' ? 'Likely Real' : a.verdict==='LIKELY_FAKE' ? 'Likely Deepfake' : 'Suspicious';
+  // Greyscale confidence colour
+  const confColor = a.confidenceScore < 40 ? '#aaaaaa' : a.confidenceScore < 65 ? '#666666' : '#111111';
+  const anomalies = (a.anomalies  || []).map(x => `<li>${x}</li>`).join('');
+  const evidence  = (a.keyEvidence || []).map(x => `<li>${x}</li>`).join('');
+  document.getElementById('ai-content').innerHTML = `
     <div class="ai-verdict-row">
-      <span class="score-pill ${vc==='v-real'?'pill-low':vc==='v-fake'?'pill-high':'pill-mid'}" style="font-size:.95rem;padding:5px 16px;">${vcLabel}</span>
+      <span class="score-pill ${vc==='v-real'?'pill-low':vc==='v-fake'?'pill-high':'pill-mid'}" style="font-size:.88rem;padding:4px 14px;">${vcLabel}</span>
       <span class="ai-conf-tag" style="color:${confColor};">${a.confidence||'—'} confidence · ${a.confidenceScore??'—'}%</span>
     </div>
     <div class="ai-grid">
@@ -1352,9 +1450,9 @@ function renderAIResult(a) {
       <div class="ai-stat"><div class="ai-stat-label">Background</div><div class="ai-stat-value">${a.backgroundArtifacts||'N/A'}</div></div>
       <div class="ai-stat"><div class="ai-stat-label">Face Symmetry</div><div class="ai-stat-value">${a.faceSymmetry||'N/A'}</div></div>
     </div>
-    ${a.summary?`<div class="ai-summary">${a.summary}</div>`:''}
-    ${evidence?`<div class="ai-evidence"><h4>Key Evidence</h4><ul>${evidence}</ul></div>`:''}
-    ${anomalies?`<div class="ai-evidence" style="margin-top:10px;"><h4>Detected Anomalies</h4><ul>${anomalies}</ul></div>`:''}
+    ${a.summary ? `<div class="ai-summary">${a.summary}</div>` : ''}
+    ${evidence  ? `<div class="ai-evidence"><h4>Key Evidence</h4><ul>${evidence}</ul></div>` : ''}
+    ${anomalies ? `<div class="ai-evidence" style="margin-top:10px;"><h4>Detected Anomalies</h4><ul>${anomalies}</ul></div>` : ''}
   `;
 }
 
@@ -1363,133 +1461,136 @@ function renderAIResult(a) {
 //  METADATA & STATISTICS
 // ══════════════════════════════════════════════════════
 function populateMetadata() {
-  const tbody=document.querySelector('#meta-table tbody');
-  tbody.innerHTML='';
-  if (!currentFile||!currentImg) return;
-  const rows=[
-    ['File name',   currentFile.name],
-    ['File type',   currentFile.type],
-    ['File size',   formatBytes(currentFile.size)],
-    ['Last modified', new Date(currentFile.lastModified).toLocaleString()],
-    ['Dimensions',  currentImg.naturalWidth+'×'+currentImg.naturalHeight+' px'],
-    ['Megapixels',  ((currentImg.naturalWidth*currentImg.naturalHeight)/1e6).toFixed(2)+' MP'],
-    ['Aspect ratio',simplifyRatio(currentImg.naturalWidth,currentImg.naturalHeight)],
-    ['Canvas size', document.getElementById('work-canvas').width+'×'+document.getElementById('work-canvas').height+' (scaled for analysis)'],
-    ['EXIF/Metadata', checkMetadataLabel(currentFile.type)],
+  const tbody = document.querySelector('#meta-table tbody');
+  tbody.innerHTML = '';
+  if (!currentFile || !currentImg) return;
+  const rows = [
+    ['File name',    currentFile.name],
+    ['File type',    currentFile.type],
+    ['File size',    formatBytes(currentFile.size)],
+    ['Last modified',new Date(currentFile.lastModified).toLocaleString()],
+    ['Dimensions',   currentImg.naturalWidth + '×' + currentImg.naturalHeight + ' px'],
+    ['Megapixels',   ((currentImg.naturalWidth * currentImg.naturalHeight) / 1e6).toFixed(2) + ' MP'],
+    ['Aspect ratio', simplifyRatio(currentImg.naturalWidth, currentImg.naturalHeight)],
+    ['Canvas size',  document.getElementById('work-canvas').width + '×' + document.getElementById('work-canvas').height + ' (scaled for analysis)'],
+    ['EXIF/Metadata',checkMetadataLabel(currentFile.type)],
   ];
-  rows.forEach(([k,v])=>{
-    tbody.innerHTML+=`<tr><td>${k}</td><td>${v}</td></tr>`;
-  });
+  rows.forEach(([k, v]) => { tbody.innerHTML += `<tr><td>${k}</td><td>${v}</td></tr>`; });
 }
 
 function checkMetadataLabel(type) {
-  // quick sync check based on last metadata score
   if (!lastScores) return '—';
-  const s=lastScores.checkMetadata;
-  if (s<20) return 'EXIF metadata present (camera data found)';
-  if (s<40) return 'XMP/editing metadata present';
-  if (s<60) return 'Some metadata found';
+  const s = lastScores.checkMetadata;
+  if (s < 20) return 'EXIF metadata present (camera data found)';
+  if (s < 40) return 'XMP/editing metadata present';
+  if (s < 60) return 'Some metadata found';
   return 'No metadata detected (suspicious)';
 }
 
 function populateStats() {
-  const tbody=document.querySelector('#stats-table tbody');
-  tbody.innerHTML='';
+  const tbody = document.querySelector('#stats-table tbody');
+  tbody.innerHTML = '';
   if (!currentImageData) return;
-  const { data, width:w, height:h } = currentImageData;
-  const pixels=w*h;
+  const { data, width: w, height: h } = currentImageData;
+  const pixels = w * h;
 
-  // Compute overall luminance stats
-  let lumSum=0,lumSq=0,rSum=0,gSum=0,bSum=0;
-  let minR=255,maxR=0,minG=255,maxG=0,minB=255,maxB=0;
-  for (let i=0;i<data.length;i+=4) {
-    rSum+=data[i]; gSum+=data[i+1]; bSum+=data[i+2];
-    if(data[i]<minR)minR=data[i]; if(data[i]>maxR)maxR=data[i];
-    if(data[i+1]<minG)minG=data[i+1]; if(data[i+1]>maxG)maxG=data[i+1];
-    if(data[i+2]<minB)minB=data[i+2]; if(data[i+2]>maxB)maxB=data[i+2];
-    const lum=0.299*data[i]+0.587*data[i+1]+0.114*data[i+2];
-    lumSum+=lum; lumSq+=lum*lum;
+  let lumSum=0, lumSq=0, rSum=0, gSum=0, bSum=0;
+  let minR=255, maxR=0, minG=255, maxG=0, minB=255, maxB=0;
+  for (let i = 0; i < data.length; i += 4) {
+    rSum += data[i]; gSum += data[i+1]; bSum += data[i+2];
+    if (data[i]   < minR) minR = data[i];   if (data[i]   > maxR) maxR = data[i];
+    if (data[i+1] < minG) minG = data[i+1]; if (data[i+1] > maxG) maxG = data[i+1];
+    if (data[i+2] < minB) minB = data[i+2]; if (data[i+2] > maxB) maxB = data[i+2];
+    const lum = 0.299*data[i] + 0.587*data[i+1] + 0.114*data[i+2];
+    lumSum += lum; lumSq += lum*lum;
   }
-  const lumMean=lumSum/pixels;
-  const lumStd=Math.sqrt(Math.max(0,lumSq/pixels-lumMean*lumMean));
-  const ch=pixelStats.channels||{};
+  const lumMean = lumSum / pixels;
+  const lumStd  = Math.sqrt(Math.max(0, lumSq/pixels - lumMean*lumMean));
+  const ch = pixelStats.channels || {};
 
-  const rows=[
-    ['Analysis dimensions', w+'×'+h+' px ('+pixels.toLocaleString()+' pixels)'],
-    ['Mean luminance',    lumMean.toFixed(1)+' / 255'],
-    ['Luminance std dev', lumStd.toFixed(1)],
-    ['Red channel',       `mean ${(rSum/pixels).toFixed(1)}, range ${minR}–${maxR}${ch.r?', skew '+ch.r.skewness:''}` ],
-    ['Green channel',     `mean ${(gSum/pixels).toFixed(1)}, range ${minG}–${maxG}${ch.g?', skew '+ch.g.skewness:''}` ],
-    ['Blue channel',      `mean ${(bSum/pixels).toFixed(1)}, range ${minB}–${maxB}${ch.b?', skew '+ch.b.skewness:''}` ],
-    ['Bilateral symmetry diff', (pixelStats.symmetry||'—')+' / 255 (lower = more symmetric)'],
-    ['Compression ratio', currentFile?(currentFile.size/(w*h*3)*100).toFixed(1)+'%':'—'],
+  const rows = [
+    ['Analysis dimensions', w + '×' + h + ' px (' + pixels.toLocaleString() + ' pixels)'],
+    ['Mean luminance',      lumMean.toFixed(1) + ' / 255'],
+    ['Luminance std dev',   lumStd.toFixed(1)],
+    ['Red channel',         `mean ${(rSum/pixels).toFixed(1)}, range ${minR}–${maxR}${ch.r ? ', skew ' + ch.r.skewness : ''}`],
+    ['Green channel',       `mean ${(gSum/pixels).toFixed(1)}, range ${minG}–${maxG}${ch.g ? ', skew ' + ch.g.skewness : ''}`],
+    ['Blue channel',        `mean ${(bSum/pixels).toFixed(1)}, range ${minB}–${maxB}${ch.b ? ', skew ' + ch.b.skewness : ''}`],
+    ['Bilateral symmetry',  (pixelStats.symmetry || '—') + ' / 255 (lower = more symmetric)'],
+    ['Compression ratio',   currentFile ? (currentFile.size / (w * h * 3) * 100).toFixed(1) + '%' : '—'],
   ];
-  rows.forEach(([k,v])=>{ tbody.innerHTML+=`<tr><td>${k}</td><td>${v}</td></tr>`; });
+  rows.forEach(([k, v]) => { tbody.innerHTML += `<tr><td>${k}</td><td>${v}</td></tr>`; });
 }
 
 function formatBytes(b) {
-  if (b<1024) return b+' B';
-  if (b<1048576) return (b/1024).toFixed(1)+' KB';
-  return (b/1048576).toFixed(2)+' MB';
+  if (b < 1024) return b + ' B';
+  if (b < 1048576) return (b / 1024).toFixed(1) + ' KB';
+  return (b / 1048576).toFixed(2) + ' MB';
 }
 
-function simplifyRatio(w,h) {
-  const g=gcd(w,h);
-  return (w/g)+':'+(h/g);
-}
-function gcd(a,b){ return b===0?a:gcd(b,a%b); }
+function simplifyRatio(w, h) { const g = gcd(w, h); return (w/g) + ':' + (h/g); }
+function gcd(a, b) { return b === 0 ? a : gcd(b, a % b); }
 
 
 // ══════════════════════════════════════════════════════
 //  VISUAL OVERLAY
 // ══════════════════════════════════════════════════════
 function toggleOverlay() {
-  const wrap=document.getElementById('overlay-wrap');
-  const btn=document.getElementById('overlay-btn');
+  const wrap = document.getElementById('overlay-wrap');
+  const btn  = document.getElementById('overlay-btn');
   if (overlayShown) {
-    wrap.style.display='none'; btn.textContent='Show Overlay'; overlayShown=false; return;
+    wrap.style.display = 'none';
+    wrap.setAttribute('aria-hidden', 'true');
+    btn.textContent = 'Show Overlay';
+    btn.setAttribute('aria-expanded', 'false');
+    overlayShown = false;
+    return;
   }
-  renderOverlay(); wrap.style.display='block'; btn.textContent='Hide Overlay'; overlayShown=true;
+  renderOverlay();
+  wrap.style.display = 'block';
+  wrap.removeAttribute('aria-hidden');
+  btn.textContent = 'Hide Overlay';
+  btn.setAttribute('aria-expanded', 'true');
+  overlayShown = true;
 }
 
 function renderOverlay() {
-  const wc=document.getElementById('work-canvas');
-  const oc=document.getElementById('overlay-canvas');
-  const w=wc.width, h=wc.height;
-  oc.width=w; oc.height=h;
-  const ctx=oc.getContext('2d');
-  ctx.drawImage(wc,0,0);
+  const wc = document.getElementById('work-canvas');
+  const oc = document.getElementById('overlay-canvas');
+  const w = wc.width, h = wc.height;
+  oc.width = w; oc.height = h;
+  const ctx = oc.getContext('2d');
+  ctx.drawImage(wc, 0, 0);
 
-  const suspMap=new Float32Array(w*h);
-  const ec=document.getElementById('ela-canvas');
-  if (ec.width===w&&ec.height===h) {
-    const orig=wc.getContext('2d').getImageData(0,0,w,h);
-    const recomp=ec.getContext('2d').getImageData(0,0,w,h);
-    for (let i=0;i<w*h;i++) {
-      const p=i*4;
-      const d=(Math.abs(orig.data[p]-recomp.data[p])+Math.abs(orig.data[p+1]-recomp.data[p+1])+Math.abs(orig.data[p+2]-recomp.data[p+2]))/3*8/255;
-      suspMap[i]+=d;
+  const suspMap = new Float32Array(w * h);
+  const ec = document.getElementById('ela-canvas');
+  if (ec.width === w && ec.height === h) {
+    const orig   = wc.getContext('2d').getImageData(0, 0, w, h);
+    const recomp = ec.getContext('2d').getImageData(0, 0, w, h);
+    for (let i = 0; i < w*h; i++) {
+      const p = i * 4;
+      const d = (Math.abs(orig.data[p] - recomp.data[p]) + Math.abs(orig.data[p+1] - recomp.data[p+1]) + Math.abs(orig.data[p+2] - recomp.data[p+2])) / 3 * 8 / 255;
+      suspMap[i] += d;
     }
   }
   if (window._edgeData) {
-    const maxE=Math.max(...window._edgeData.slice(0,w*h));
-    if (maxE>0) for (let i=0;i<w*h;i++) suspMap[i]+=window._edgeData[i]/maxE*0.4;
+    const maxE = Math.max(...window._edgeData.slice(0, w*h));
+    if (maxE > 0) for (let i = 0; i < w*h; i++) suspMap[i] += window._edgeData[i] / maxE * 0.4;
   }
-  const maxS=Math.max(...suspMap);
-  if (maxS>0) for (let i=0;i<suspMap.length;i++) suspMap[i]/=maxS;
+  const maxS = Math.max(...suspMap);
+  if (maxS > 0) for (let i = 0; i < suspMap.length; i++) suspMap[i] /= maxS;
 
-  const overlayImg=ctx.createImageData(w,h);
-  for (let i=0;i<w*h;i++) {
-    const s=suspMap[i], p=i*4;
-    let r,g,b;
-    if (s<0.5){r=Math.round(s*2*255);g=255;b=0;}
-    else{r=255;g=Math.round((1-(s-.5)*2)*255);b=0;}
-    overlayImg.data[p]=r; overlayImg.data[p+1]=g; overlayImg.data[p+2]=b; overlayImg.data[p+3]=Math.round(s*170);
+  const overlayImg = ctx.createImageData(w, h);
+  for (let i = 0; i < w*h; i++) {
+    const s = suspMap[i], p = i * 4;
+    let r, g, b;
+    if (s < 0.5) { r = Math.round(s*2*255); g = 255; b = 0; }
+    else { r = 255; g = Math.round((1-(s-.5)*2)*255); b = 0; }
+    overlayImg.data[p] = r; overlayImg.data[p+1] = g; overlayImg.data[p+2] = b; overlayImg.data[p+3] = Math.round(s * 170);
   }
-  ctx.drawImage(wc,0,0);
-  const tmp=document.createElement('canvas'); tmp.width=w; tmp.height=h;
-  tmp.getContext('2d').putImageData(overlayImg,0,0);
-  ctx.globalAlpha=0.55; ctx.drawImage(tmp,0,0); ctx.globalAlpha=1;
+  ctx.drawImage(wc, 0, 0);
+  const tmp = document.createElement('canvas'); tmp.width = w; tmp.height = h;
+  tmp.getContext('2d').putImageData(overlayImg, 0, 0);
+  ctx.globalAlpha = 0.55; ctx.drawImage(tmp, 0, 0); ctx.globalAlpha = 1;
 }
 
 
@@ -1498,35 +1599,34 @@ function renderOverlay() {
 // ══════════════════════════════════════════════════════
 function analyzeAnother() { resetUpload(); goTo(2); }
 
-document.addEventListener('DOMContentLoaded',()=>{
-  const s=document.getElementById('screen-1');
-  s.style.opacity='0';
-  requestAnimationFrame(()=>requestAnimationFrame(()=>s.style.opacity='1'));
+document.addEventListener('DOMContentLoaded', () => {
+  const s = document.getElementById('screen-1');
+  s.classList.add('fade-in');
 });
 </script>
 
 <!-- ══════════════════════════════════════════
      COOKIE BANNER
 ══════════════════════════════════════════ -->
-<div id="cookie-banner" style="
+<div id="cookie-banner" role="dialog" aria-label="Cookie consent" aria-live="polite" style="
   display:none; position:fixed; bottom:0; left:0; right:0; z-index:9999;
-  background:#1d1d1f; color:#f5f5f7; padding:16px 24px;
+  background:var(--ink); color:var(--white); padding:16px 24px;
   display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap;
-  box-shadow:0 -4px 24px rgba(0,0,0,.18); font-size:.875rem;">
-  <div style="flex:1;min-width:220px;">
-    <strong style="color:#fff;">Diese Website verwendet Cookies.</strong>
+  border-top:1px solid rgba(255,255,255,.1); font-size:.875rem;">
+  <div style="flex:1;min-width:220px;line-height:1.6;">
+    <strong style="color:var(--white);">Diese Website verwendet Cookies.</strong>
     Technisch notwendige Cookies für den Betrieb. Keine Tracking- oder Werbe-Cookies.
-    <a href="/datenschutz.html" style="color:#0071e3;margin-left:6px;">Datenschutzerklärung</a>
+    <a href="/datenschutz.html" style="color:var(--subtle);margin-left:6px;">Datenschutzerklärung</a>
   </div>
-  <div style="display:flex;gap:10px;flex-shrink:0;">
+  <div style="display:flex;gap:8px;flex-shrink:0;">
     <button onclick="acceptCookies()" style="
-      background:#0071e3;color:#fff;border:none;border-radius:980px;
-      padding:9px 22px;font-size:.875rem;font-weight:600;cursor:pointer;">
+      background:var(--white);color:var(--ink);border:none;border-radius:6px;
+      padding:8px 20px;font-size:.875rem;font-weight:700;cursor:pointer;touch-action:manipulation;">
       Akzeptieren
     </button>
     <button onclick="declineCookies()" style="
-      background:transparent;color:#a1a1a6;border:1px solid #3d3d3f;border-radius:980px;
-      padding:9px 22px;font-size:.875rem;cursor:pointer;">
+      background:transparent;color:var(--subtle);border:1px solid rgba(255,255,255,.2);
+      border-radius:6px;padding:8px 20px;font-size:.875rem;cursor:pointer;touch-action:manipulation;">
       Ablehnen
     </button>
   </div>
@@ -1536,12 +1636,12 @@ document.addEventListener('DOMContentLoaded',()=>{
      SITE FOOTER
 ══════════════════════════════════════════ -->
 <footer style="
-  background:#f5f5f7; border-top:1px solid #d2d2d7;
-  padding:24px; text-align:center; font-size:.82rem; color:#6e6e73;">
-  <div style="max-width:860px;margin:0 auto;display:flex;justify-content:center;gap:24px;flex-wrap:wrap;">
+  background:var(--surface); border-top:1px solid var(--border);
+  padding:20px 24px; text-align:center; font-size:.8rem; color:var(--muted);">
+  <div style="max-width:800px;margin:0 auto;display:flex;justify-content:center;gap:20px;flex-wrap:wrap;">
     <span>© 2026 Deepfake Identifier</span>
-    <a href="/impressum.html"    style="color:#6e6e73;text-decoration:none;">Impressum</a>
-    <a href="/datenschutz.html"  style="color:#6e6e73;text-decoration:none;">Datenschutz</a>
+    <a href="/impressum.html"   style="color:var(--muted);text-decoration:none;">Impressum</a>
+    <a href="/datenschutz.html" style="color:var(--muted);text-decoration:none;">Datenschutz</a>
     <span>Powered by Claude AI</span>
   </div>
 </footer>
